@@ -1,0 +1,153 @@
+import { ApiRequestError, ErrorCodes, type ForbiddenContext } from '@arcbit/api-client'
+import { DEFAULT_RECONSENT_EXCLUDED, isReconsentExcluded, missingFromError } from './consentLogic'
+import type { LegalApi } from './legalApi'
+import type { ConsentRequest, ConsentSource, MissingConsent } from './types'
+
+/** 동의를 묻는 중인가 — `origin` 은 어디서 알았는가(`forbidden`: 호출이 403 을 받았다 · `sign-in`: 로그인 직후 `GET /consents/me` 가 blocked) */
+export type ReconsentState =
+  | { status: 'idle' }
+  | {
+      status: 'required'
+      missing: MissingConsent[]
+      origin: 'forbidden' | 'sign-in'
+    }
+
+export type ReconsentController = {
+  getState(): ReconsentState
+  subscribe(listener: () => void): () => void
+  /** `createApiClient({ recoverForbidden })` 에 꽂는다 — 재동의 403 이면 화면을 열고 사용자가 동의(true) · 떠남(false)할 때까지 기다린다. 다른 403 · 제외 경로는 즉시 false */
+  recover(context: ForbiddenContext): Promise<boolean>
+  /** 로그인 직후 한 번 — `GET /consents/me` 가 blocked 면 화면을 연다(백엔드에 legal 모듈이 없거나 실패하면 조용히 넘어간다) */
+  check(): Promise<void>
+  /** `POST /consents` — 성공하면 기다리던 호출을 풀어 준다. 아직 막혀 있으면(그 사이 새 판) 새 목록으로 계속 묻는다. 409 `LEGAL.VERSION_STALE` 은 목록을 새로 읽고 다시 던진다 */
+  agree(consents: ConsentRequest[], source?: ConsentSource): Promise<void>
+  /** 사용자가 동의하지 않고 떠난다(로그아웃 등) — 기다리던 호출은 원래 403 으로 끝난다 */
+  decline(): void
+  /**
+   * 지금 로그인한 계정을 알린다(`ReconsentGate` 가 매번). **계정이 바뀌면**(다른 탭에서 다른 계정으로 로그인 · 로그아웃) 묻던 것을 접고 기다리던 호출을 원래 403 으로 끝낸다.
+   * 로그아웃한 뒤(`null`)에 늦게 도착한 403 은 화면을 다시 세우지 않는다. 한 번도 알리지 않은 컨트롤러는 예전처럼 계정을 가리지 않는다
+   */
+  setAccount(accountId: string | null): void
+}
+
+type ConsentApi = Pick<LegalApi, 'agree' | 'myConsents'>
+
+export type ReconsentOptions = {
+  /** 법적 문서 API — 함수로 줘도 된다(API 클라이언트가 `recoverForbidden` 으로 이 컨트롤러를 먼저 필요로 해서, API 는 그 뒤에 만들어진다) */
+  api: ConsentApi | (() => ConsentApi)
+  /** 서버가 막지 않는 경로의 접두어(기본 `/legal` · `/auth` · `/account`) — `legal` 의 basePath 를 바꿨다면 같이 바꾼다 */
+  excludedPrefixes?: readonly string[]
+}
+
+const IDLE: ReconsentState = { status: 'idle' }
+
+/**
+ * 재동의의 상태 기계 — UI 가 없다(`ReconsentGate` 가 이 상태를 그린다). 같은 때에 실패한 호출들은 하나의 질문을 공유한다.
+ * 403 은 로그아웃도 토큰 갱신도 아니다: 동의가 끝나면 막혔던 호출을 **그대로 한 번 더** 보낸다(api-client 의 `recoverForbidden`).
+ */
+export function createReconsentController({
+  api: given,
+  excludedPrefixes = DEFAULT_RECONSENT_EXCLUDED,
+}: ReconsentOptions): ReconsentController {
+  const api: ConsentApi = {
+    agree: (...args) => (typeof given === 'function' ? given() : given).agree(...args),
+    myConsents: () => (typeof given === 'function' ? given() : given).myConsents(),
+  }
+  let state: ReconsentState = IDLE
+  let account: string | null | undefined // undefined = 알린 적 없다
+  const listeners = new Set<() => void>()
+  let waiters: Array<(value: boolean) => void> = []
+
+  const set = (next: ReconsentState) => {
+    state = next
+    for (const listener of [...listeners]) listener()
+  }
+  const release = (value: boolean) => {
+    const done = waiters
+    waiters = []
+    for (const resolve of done) resolve(value)
+  }
+  const open = (missing: MissingConsent[], origin: 'forbidden' | 'sign-in') => {
+    // 이미 묻는 중이면 목록만 새로(같은 질문을 공유한다)
+    set({
+      status: 'required',
+      missing,
+      origin: state.status === 'required' ? state.origin : origin,
+    })
+  }
+
+  return {
+    getState: () => state,
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => void listeners.delete(listener)
+    },
+
+    async recover({ error, path }) {
+      if (isReconsentExcluded(path, excludedPrefixes)) return false
+      const missing = missingFromError(error)
+      if (missing === null) return false
+      if (account === null) return false // 로그아웃한 뒤에 도착한 403 — 로그인 화면 위에 막을 세우지 않는다
+      open(missing, 'forbidden')
+      return new Promise<boolean>((resolve) => waiters.push(resolve))
+    },
+
+    async check() {
+      try {
+        const mine = await api.myConsents()
+        if (mine.blocked) open(mine.missing, 'sign-in')
+        else if (state.status === 'required') {
+          // 서버가 더는 묻지 않는다(다른 탭에서 동의했다) — 접고 기다리던 호출을 보낸다
+          set(IDLE)
+          release(true)
+        }
+      } catch {
+        // legal 모듈이 없는 백엔드(404) · 네트워크 실패 — 이 검사는 서버 강제의 보조일 뿐이다(막히면 호출이 403 으로 말한다)
+      }
+    },
+
+    async agree(consents, source) {
+      const origin = state.status === 'required' ? state.origin : 'forbidden'
+      try {
+        const mine = await api.agree(
+          consents,
+          source ?? (origin === 'sign-in' ? 'first-sign-in' : 're-consent'),
+        )
+        if (mine.blocked) {
+          open(mine.missing, origin)
+          return
+        }
+        set(IDLE)
+        release(true)
+      } catch (error) {
+        if (
+          error instanceof ApiRequestError &&
+          error.apiError.code === ErrorCodes.LEGAL_VERSION_STALE
+        ) {
+          try {
+            const mine = await api.myConsents()
+            if (mine.blocked) open(mine.missing, origin)
+          } catch {
+            // 목록을 못 새로 읽어도 화면은 오류를 보여 준다
+          }
+        }
+        throw error
+      }
+    },
+
+    decline() {
+      set(IDLE)
+      release(false)
+    },
+
+    setAccount(next) {
+      if (next === account) return
+      const had = account !== undefined
+      account = next
+      if (had && (state.status === 'required' || waiters.length > 0)) {
+        set(IDLE)
+        release(false)
+      }
+    },
+  }
+}

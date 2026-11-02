@@ -1,0 +1,26 @@
+.field {
+  display: grid;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+}
+
+.required {
+  margin-left: var(--space-xs);
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.error {
+  color: var(--red);
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+}

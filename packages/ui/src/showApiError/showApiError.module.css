@@ -1,0 +1,5 @@
+.trace {
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-caption);
+  font-family: var(--mono);
+}

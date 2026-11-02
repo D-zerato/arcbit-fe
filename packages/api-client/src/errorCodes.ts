@@ -1,0 +1,247 @@
+import { ApiRequestError } from './types'
+
+/**
+ * 백엔드(kotlin-skeleton)가 `ApiError.code` 로 내보내는 코드. 출처별로 묶었다.
+ * 코드를 추가·바꾸면 해당 Kotlin enum 과 함께 갱신한다 (임의로 만들지 않는다).
+ */
+export const ErrorCodes = {
+  // modules/platform common/ErrorCode.kt — PlatformErrorCode
+  COMMON_VALIDATION_FAILED: 'COMMON.VALIDATION_FAILED',
+  COMMON_PARAMETER_VALIDATION_FAILED: 'COMMON.PARAMETER_VALIDATION_FAILED',
+  COMMON_MALFORMED_REQUEST: 'COMMON.MALFORMED_REQUEST',
+  COMMON_NOT_FOUND: 'COMMON.NOT_FOUND',
+  COMMON_UNAUTHORIZED: 'COMMON.UNAUTHORIZED',
+  COMMON_FORBIDDEN: 'COMMON.FORBIDDEN',
+  COMMON_TOO_MANY_REQUESTS: 'COMMON.TOO_MANY_REQUESTS',
+  COMMON_IDEMPOTENCY_ERROR: 'COMMON.IDEMPOTENCY_ERROR',
+  COMMON_DATA_INTEGRITY_VIOLATION: 'COMMON.DATA_INTEGRITY_VIOLATION',
+  COMMON_EXTERNAL_SERVICE_ERROR: 'COMMON.EXTERNAL_SERVICE_ERROR',
+  COMMON_EXTERNAL_SERVICE_TIMEOUT: 'COMMON.EXTERNAL_SERVICE_TIMEOUT',
+  COMMON_INTERNAL_SERVER_ERROR: 'COMMON.INTERNAL_SERVER_ERROR',
+
+  // modules/auth auth/api/AuthErrorCode.kt
+  AUTH_INVALID_CREDENTIALS: 'AUTH.INVALID_CREDENTIALS',
+
+  // 계정 수명주기(kotlin-skeleton docs/account-http-contract.md 10절) — AUTH.* 는 modules/auth · auth-session, ACCOUNT.* 는 modules/account
+  AUTH_EMAIL_NOT_VERIFIED: 'AUTH.EMAIL_NOT_VERIFIED',
+  AUTH_ACCOUNT_SUSPENDED: 'AUTH.ACCOUNT_SUSPENDED',
+  /** 탈퇴 유예 중인 계정이 **맞는** 증거로 로그인했다(403) — `data.purgeAfter`, 서버가 self-restore 를 켰을 때만 `data.restoreToken` · `data.restoreTokenExpiresAt`. 세션은 열리지 않는다 */
+  AUTH_ACCOUNT_DELETION_PENDING: 'AUTH.ACCOUNT_DELETION_PENDING',
+  AUTH_TOO_MANY_ATTEMPTS: 'AUTH.TOO_MANY_ATTEMPTS',
+  AUTH_REFRESH_INVALID: 'AUTH.REFRESH_INVALID',
+  AUTH_REFRESH_REUSED: 'AUTH.REFRESH_REUSED',
+  /** 한 세션이 10분에 30번 넘게 회전했다(429, `Retry-After`) — 세션은 살아 있다: 로그아웃하지 말고 기다렸다 다시 */
+  AUTH_TOO_MANY_REFRESHES: 'AUTH.TOO_MANY_REFRESHES',
+  AUTH_SESSION_NOT_FOUND: 'AUTH.SESSION_NOT_FOUND',
+  AUTH_CSRF_HEADER_REQUIRED: 'AUTH.CSRF_HEADER_REQUIRED',
+  ACCOUNT_TOKEN_INVALID: 'ACCOUNT.TOKEN_INVALID',
+  /** 인증번호가 틀렸다(400, `data.attemptsLeft`) */
+  ACCOUNT_CODE_INVALID: 'ACCOUNT.CODE_INVALID',
+  /** 인증번호가 만료 · 소진 · 이미 씀 · 다른 세션 · 모르는 시도(410) */
+  ACCOUNT_CODE_EXPIRED: 'ACCOUNT.CODE_EXPIRED',
+  ACCOUNT_PASSWORD_POLICY: 'ACCOUNT.PASSWORD_POLICY',
+  ACCOUNT_CURRENT_PASSWORD_INVALID: 'ACCOUNT.CURRENT_PASSWORD_INVALID',
+  ACCOUNT_REAUTH_FAILED: 'ACCOUNT.REAUTH_FAILED',
+  ACCOUNT_REAUTH_REQUIRED: 'ACCOUNT.REAUTH_REQUIRED',
+  /** 계정에 이메일 주소가 없다(403, `data` 없음) — 허용 목록(`/account/me` · 이메일 등록 · 삭제 · `/auth/**` · `/legal/**`) 밖의 모든 호출이 막힌다: 「이메일을 등록해 주세요」 화면 */
+  ACCOUNT_EMAIL_REQUIRED: 'ACCOUNT.EMAIL_REQUIRED',
+  /** 계정에 로그인 아이디가 없다(403, `data` 없음) — 로그인 아이디를 켠 앱에서 허용 목록 밖의 모든 호출이 막힌다: 「아이디를 정해 주세요」 화면. 이메일 · 약관 막보다 먼저 온다 */
+  ACCOUNT_LOGIN_ID_REQUIRED: 'ACCOUNT.LOGIN_ID_REQUIRED',
+  /** 이미 쓰고 있거나 · 탈퇴한 · 예약된 아이디(409) — 가입 · 가입 인증(시도는 닫히지 않는다) · 아이디 정하기. 이유는 구분해 알리지 않는다 */
+  ACCOUNT_LOGIN_ID_TAKEN: 'ACCOUNT.LOGIN_ID_TAKEN',
+  /** 이 계정은 이미 아이디를 정했다(409) — 아이디는 바꿀 수 없다 */
+  ACCOUNT_LOGIN_ID_ALREADY_SET: 'ACCOUNT.LOGIN_ID_ALREADY_SET',
+  ACCOUNT_CAPTCHA_FAILED: 'ACCOUNT.CAPTCHA_FAILED',
+  ACCOUNT_EMAIL_TAKEN: 'ACCOUNT.EMAIL_TAKEN',
+  ACCOUNT_SIGN_UP_CLOSED: 'ACCOUNT.SIGN_UP_CLOSED',
+  /** 닉네임 중복 금지 방식(서버 선택 기능)일 때 — 가입 인증 완료 · 프로필 수정(409). 꼬리표 방식 · 중복 허용에서는 오지 않는다 */
+  ACCOUNT_DISPLAY_NAME_TAKEN: 'ACCOUNT.DISPLAY_NAME_TAKEN',
+  ACCOUNT_SOCIAL_EMAIL_CONFLICT: 'ACCOUNT.SOCIAL_EMAIL_CONFLICT',
+  ACCOUNT_IDENTITY_TAKEN: 'ACCOUNT.IDENTITY_TAKEN',
+  ACCOUNT_IDENTITY_EXISTS: 'ACCOUNT.IDENTITY_EXISTS',
+  ACCOUNT_IDENTITY_NOT_FOUND: 'ACCOUNT.IDENTITY_NOT_FOUND',
+  ACCOUNT_LAST_SIGN_IN_METHOD: 'ACCOUNT.LAST_SIGN_IN_METHOD',
+  ACCOUNT_LAST_ADMIN: 'ACCOUNT.LAST_ADMIN',
+  /** `POST /account/discard` 가 거절됐다(409) - 주소가 있는 계정 · 이메일 필수가 아닌 앱 · 활성이 아닌(정지) 계정 */
+  ACCOUNT_DISCARD_NOT_ALLOWED: 'ACCOUNT.DISCARD_NOT_ALLOWED',
+  ACCOUNT_SELF_ACTION_FORBIDDEN: 'ACCOUNT.SELF_ACTION_FORBIDDEN',
+  ACCOUNT_NOT_FOUND: 'ACCOUNT.NOT_FOUND',
+  /** 지워진(ERASED) 계정에 한 관리자 동작(복구 · 정지 · 역할 · 삭제) — 410 */
+  ACCOUNT_ERASED: 'ACCOUNT.ERASED',
+  /** 정지된 계정은 스스로 탈퇴할 수 없다(`delete` · `delete/confirmation`, 403) */
+  ACCOUNT_SUSPENDED_CANNOT_DELETE: 'ACCOUNT.SUSPENDED_CANNOT_DELETE',
+  /** 관리자 삭제(erase)는 정지된 계정만(409) */
+  ACCOUNT_NOT_SUSPENDED: 'ACCOUNT.NOT_SUSPENDED',
+  /** 지우기(erase)가 이미 이 계정을 잡았다 — 정지 · 정지 해제가 409. 같은 `POST /admin/accounts/{id}/erase` 를 다시 불러 끝낸다 */
+  ACCOUNT_ERASURE_IN_PROGRESS: 'ACCOUNT.ERASURE_IN_PROGRESS',
+  /** 지우기가 일부만 끝나 503 — 같은 호출을 다시 하면 이어서 끝난다 */
+  ACCOUNT_ERASURE_RETRY: 'ACCOUNT.ERASURE_RETRY',
+  /** 메일함 · 제공자 계정을 증명한 사람에게만 — 재가입이 막힌 주소(`verify-email` · 링크 로그인 · 소셜, 403) */
+  ACCOUNT_REGISTRATION_BLOCKED: 'ACCOUNT.REGISTRATION_BLOCKED',
+  ACCOUNT_RATE_LIMITED: 'ACCOUNT.RATE_LIMITED',
+  ACCOUNT_PASSWORD_REQUIRED: 'ACCOUNT.PASSWORD_REQUIRED',
+  ACCOUNT_METHOD_UNKNOWN: 'ACCOUNT.METHOD_UNKNOWN',
+
+  // modules/auth-social auth/social/oauth/AuthSocialErrorCode.kt
+  // PKCE · nonce 전제(소셜 계약 addendum D) — 400 은 요청이 틀렸다는 뜻(아무것도 쓰이지 않았다), ID 토큰 401 은 동의를 처음부터
+  // legal 모듈(kotlin-skeleton docs/legal-http-contract.md 6절)
+  LEGAL_CONSENT_REQUIRED: 'LEGAL.CONSENT_REQUIRED',
+  LEGAL_RECONSENT_REQUIRED: 'LEGAL.RECONSENT_REQUIRED',
+  LEGAL_VERSION_STALE: 'LEGAL.VERSION_STALE',
+  LEGAL_WITHDRAWAL_NOT_ALLOWED: 'LEGAL.WITHDRAWAL_NOT_ALLOWED',
+  LEGAL_UNKNOWN_DOCUMENT: 'LEGAL.UNKNOWN_DOCUMENT',
+  LEGAL_DOCUMENT_NOT_FOUND: 'LEGAL.DOCUMENT_NOT_FOUND',
+  LEGAL_RATE_LIMITED: 'LEGAL.RATE_LIMITED',
+
+  AUTH_SOCIAL_PKCE_FAILED: 'AUTH.SOCIAL_PKCE_FAILED',
+  AUTH_SOCIAL_NONCE_FAILED: 'AUTH.SOCIAL_NONCE_FAILED',
+  AUTH_SOCIAL_ID_TOKEN_INVALID: 'AUTH.SOCIAL_ID_TOKEN_INVALID',
+  AUTH_SOCIAL_PROVIDER_NOT_FOUND: 'AUTH_SOCIAL.PROVIDER_NOT_FOUND',
+  AUTH_SOCIAL_INVALID_AUTHORIZATION_CODE: 'AUTH_SOCIAL.INVALID_AUTHORIZATION_CODE',
+  AUTH_SOCIAL_PROVIDER_GATEWAY_ERROR: 'AUTH_SOCIAL.PROVIDER_GATEWAY_ERROR',
+  AUTH_SOCIAL_ACCOUNT_LINK_NOT_FOUND: 'AUTH_SOCIAL.ACCOUNT_LINK_NOT_FOUND',
+  AUTH_SOCIAL_LINKED_ACCOUNT_NOT_FOUND: 'AUTH_SOCIAL.LINKED_ACCOUNT_NOT_FOUND',
+
+  // modules/storage storage/web/StorageController.kt — StorageErrorCode. FILE_REJECTED 의 data.errors 가 [{ code, message }]
+  STORAGE_FILE_REJECTED: 'STORAGE.FILE_REJECTED',
+  STORAGE_OBJECT_NOT_FOUND: 'STORAGE.OBJECT_NOT_FOUND',
+  STORAGE_UNAUTHENTICATED: 'STORAGE.UNAUTHENTICATED',
+
+  // modules/payment payment/PaymentErrorCode.kt
+  PAYMENT_PROVIDER_NOT_FOUND: 'PAYMENT.PROVIDER_NOT_FOUND',
+  PAYMENT_ROUTING_FAILED: 'PAYMENT.ROUTING_FAILED',
+  PAYMENT_PROVIDER_ERROR: 'PAYMENT.PROVIDER_ERROR',
+
+  // modules/board — BoardErrorCode (kotlin-skeleton). HTTP 상태: NOT_FOUND 404 · FORBIDDEN 403 · REACTION_TYPE_INVALID · CONTENT_INVALID 400 · COMMENT_TOO_DEEP 422 · POST_NOT_COMMENTABLE · CODE_TAKEN 409 · RATE_LIMITED 429 · REVISION_CHANGED 409
+  BOARD_NOT_FOUND: 'BOARD.NOT_FOUND',
+  BOARD_POST_NOT_FOUND: 'BOARD.POST_NOT_FOUND',
+  BOARD_COMMENT_NOT_FOUND: 'BOARD.COMMENT_NOT_FOUND',
+  BOARD_FORBIDDEN: 'BOARD.FORBIDDEN',
+  BOARD_REACTION_TYPE_INVALID: 'BOARD.REACTION_TYPE_INVALID',
+  BOARD_COMMENT_TOO_DEEP: 'BOARD.COMMENT_TOO_DEEP',
+  BOARD_CONTENT_INVALID: 'BOARD.CONTENT_INVALID',
+  BOARD_POST_NOT_COMMENTABLE: 'BOARD.POST_NOT_COMMENTABLE',
+  BOARD_CODE_TAKEN: 'BOARD.CODE_TAKEN',
+  BOARD_RATE_LIMITED: 'BOARD.RATE_LIMITED',
+  BOARD_REVISION_CHANGED: 'BOARD.REVISION_CHANGED',
+  // 비회원 만들기에 캡차가 필요한데 토큰이 없거나 틀림(`guest.captcha=REQUIRED`) — 400
+  BOARD_CAPTCHA_FAILED: 'BOARD.CAPTCHA_FAILED',
+  // 작성자 프로필을 쓰는 서버(`author-profile` 가 있을 때) — AUTHOR_REQUIRED 400(`authorRequired` 인데 `authorId` 없음), AUTHOR_NOT_ALLOWED 403(남의 · 없는 · 지워진 id 이거나 `authorRequired` 가 아닌데 `authorId` 를 보냄 — 같은 코드 · 같은 문구)
+  BOARD_AUTHOR_REQUIRED: 'BOARD.AUTHOR_REQUIRED',
+  BOARD_AUTHOR_NOT_ALLOWED: 'BOARD.AUTHOR_NOT_ALLOWED',
+
+  // modules/author-profile — AuthorProfileErrorCode (kotlin-skeleton docs/author-profile-http-contract.md). NAME_TAKEN · LIMIT_REACHED 409 · RATE_LIMITED 429 · NOT_FOUND 404(남의 · 없는 · 지워진 id 모두 같은 코드). 이름 칸 오류(400)는 닉네임과 같은 필드 코드(Required · Size · Pattern · Reserved)
+  AUTHOR_PROFILE_NAME_TAKEN: 'AUTHOR_PROFILE.NAME_TAKEN',
+  AUTHOR_PROFILE_LIMIT_REACHED: 'AUTHOR_PROFILE.LIMIT_REACHED',
+  AUTHOR_PROFILE_RATE_LIMITED: 'AUTHOR_PROFILE.RATE_LIMITED',
+  AUTHOR_PROFILE_NOT_FOUND: 'AUTHOR_PROFILE.NOT_FOUND',
+
+  // modules/workspace (kotlin-skeleton docs/modules/workspace.md). NOT_FOUND 404(없는 · 멤버 아닌 · 닫힌 워크스페이스가 모두 같은 코드) · FORBIDDEN 403(역할 부족) · REQUIRED 400(`X-Workspace-Id` 헤더 없음) · SLUG_TAKEN 409 · OWNER_CANNOT_LEAVE 409(먼저 소유권 이전) · MEMBER_NOT_FOUND 404
+  WORKSPACE_NOT_FOUND: 'WORKSPACE.NOT_FOUND',
+  WORKSPACE_FORBIDDEN: 'WORKSPACE.FORBIDDEN',
+  WORKSPACE_REQUIRED: 'WORKSPACE.REQUIRED',
+  WORKSPACE_SLUG_TAKEN: 'WORKSPACE.SLUG_TAKEN',
+  WORKSPACE_OWNER_CANNOT_LEAVE: 'WORKSPACE.OWNER_CANNOT_LEAVE',
+  WORKSPACE_MEMBER_NOT_FOUND: 'WORKSPACE.MEMBER_NOT_FOUND',
+  // 초대 — INVITATION_INVALID 400(없는 · 만료 · 쓴 · 취소 토큰 모두, `data.reason`: EXPIRED | USED | INVALID) · INVITATION_EMAIL_MISMATCH 403(다른 주소의 계정) · EMAIL_UNVERIFIED 403(확인된 이메일 없음) · ALREADY_MEMBER 409 · SEAT_LIMIT 409(수락 때) · RESEND_TOO_SOON 429(같은 초대 60초 안) · TOO_MANY_PENDING 409(대기 초대 상한)
+  WORKSPACE_INVITATION_INVALID: 'WORKSPACE.INVITATION_INVALID',
+  WORKSPACE_INVITATION_EMAIL_MISMATCH: 'WORKSPACE.INVITATION_EMAIL_MISMATCH',
+  WORKSPACE_EMAIL_UNVERIFIED: 'WORKSPACE.EMAIL_UNVERIFIED',
+  WORKSPACE_ALREADY_MEMBER: 'WORKSPACE.ALREADY_MEMBER',
+  WORKSPACE_SEAT_LIMIT: 'WORKSPACE.SEAT_LIMIT',
+  WORKSPACE_RESEND_TOO_SOON: 'WORKSPACE.RESEND_TOO_SOON',
+  WORKSPACE_TOO_MANY_PENDING: 'WORKSPACE.TOO_MANY_PENDING',
+
+  // modules/notification-push (kotlin-skeleton docs/push-http-contract.md). TEST_TOO_SOON 429(시험 알림은 계정당 60초에 한 번)
+  PUSH_TEST_TOO_SOON: 'PUSH.TEST_TOO_SOON',
+
+  // modules/authz — AuthzErrors (kotlin-skeleton docs/authz-http-contract.md). ROLE_PROTECTED · ROLE_IN_USE · ROLE_EXISTS · SELF_LOCKOUT 409, ROLE_NOT_FOUND 404, PERMISSION_UNKNOWN 400, ESCALATION 403
+  AUTHZ_ROLE_PROTECTED: 'AUTHZ.ROLE_PROTECTED',
+  AUTHZ_ROLE_IN_USE: 'AUTHZ.ROLE_IN_USE',
+  AUTHZ_ROLE_EXISTS: 'AUTHZ.ROLE_EXISTS',
+  AUTHZ_ROLE_NOT_FOUND: 'AUTHZ.ROLE_NOT_FOUND',
+  AUTHZ_PERMISSION_UNKNOWN: 'AUTHZ.PERMISSION_UNKNOWN',
+  AUTHZ_ESCALATION: 'AUTHZ.ESCALATION',
+  AUTHZ_SELF_LOCKOUT: 'AUTHZ.SELF_LOCKOUT',
+  // 역할 위계(includes): 순환 409 · 모르는 포함 역할 400 · 다른 역할이 포함 중인 역할 삭제 409
+  AUTHZ_ROLE_CYCLE: 'AUTHZ.ROLE_CYCLE',
+  AUTHZ_INCLUDE_UNKNOWN: 'AUTHZ.INCLUDE_UNKNOWN',
+  AUTHZ_ROLE_INCLUDED: 'AUTHZ.ROLE_INCLUDED',
+  // 계정 역할 부여(`PUT /admin/accounts/{id}/roles/{role}`)의 새 오류: 정의되지 않은 역할 400 · 자기에게 없는 권한을 가진 역할 403
+  ACCOUNT_ROLE_UNKNOWN: 'ACCOUNT.ROLE_UNKNOWN',
+  ACCOUNT_ROLE_ESCALATION: 'ACCOUNT.ROLE_ESCALATION',
+
+  // modules/dashboard — DashboardErrors (kotlin-skeleton docs/dashboard-http-contract.md). RANGE_INVALID 400(날짜 · 366일 초과), RANKING_NOT_FOUND 404, LAYOUT_UNAVAILABLE 404(`dashboard-jdbc` 없음 → 화면 설정은 브라우저 저장), LAYOUT_INVALID 400
+  DASHBOARD_RANGE_INVALID: 'DASHBOARD.RANGE_INVALID',
+  DASHBOARD_RANKING_NOT_FOUND: 'DASHBOARD.RANKING_NOT_FOUND',
+  DASHBOARD_LAYOUT_UNAVAILABLE: 'DASHBOARD.LAYOUT_UNAVAILABLE',
+  DASHBOARD_LAYOUT_INVALID: 'DASHBOARD.LAYOUT_INVALID',
+
+  // modules/campaign · coupon · point — 사용자 HTTP (이벤트 · 보상 계획 C-R). 초대 코드 실패의 이유는 data.reason (자기 코드 · 맞초대 · 이미 · 새 계정 아님 · 없는 코드)
+  CAMPAIGN_NOT_ACTIVE: 'CAMPAIGN.NOT_ACTIVE',
+  CAMPAIGN_REFERRAL_INVALID: 'CAMPAIGN.REFERRAL_INVALID',
+  /** 운영: 승인할 수 없는 상태(확인 필요 · 보류 중이 아님) 409 */
+  CAMPAIGN_REFERRAL_NOT_PENDING: 'CAMPAIGN.REFERRAL_NOT_PENDING',
+  /** 운영: 이미 끝난 초대(지급 · 상한 · 취소)는 취소할 수 없다 409 */
+  CAMPAIGN_REFERRAL_NOT_CANCELABLE: 'CAMPAIGN.REFERRAL_NOT_CANCELABLE',
+  COUPON_CODE_INVALID: 'COUPON.CODE_INVALID',
+  COUPON_CODE_USED: 'COUPON.CODE_USED',
+  COUPON_CODE_EXHAUSTED: 'COUPON.CODE_EXHAUSTED',
+  /** 쿠폰 정의의 발행 기간 밖 - 운영자 발급 · 코드 등록 · 보상 지급 409 */
+  COUPON_ISSUE_CLOSED: 'COUPON.ISSUE_CLOSED',
+  /** 쿠폰 정의 값 · 기간 검증 실패 400 (발행 시작 < 끝, 사용 시작 < 유효기간 끝 …) */
+  COUPON_DEFINITION_INVALID: 'COUPON.DEFINITION_INVALID',
+  POINT_INSUFFICIENT: 'POINT.INSUFFICIENT',
+  // modules/badge BadgeErrors.kt
+  /** 같은 코드의 배지 정의가 이미 있다(409) */
+  BADGE_CODE_TAKEN: 'BADGE.CODE_TAKEN',
+  /** 보관된 배지는 줄 수 없다(409) */
+  BADGE_ARCHIVED: 'BADGE.ARCHIVED',
+
+  // payment 할인 · 0원 (이벤트 · 보상 계획 C-P): 쿠폰이 이 상품에 안 맞음 400 · 이미 쓰는 중 409 · 이 결제 방법은 쿠폰 불가 400 · 최소 금액 미달 400 · 결제한 금액이 없어 환불할 것 없음 409
+  PAYMENT_DISCOUNT_NOT_APPLICABLE: 'PAYMENT.DISCOUNT_NOT_APPLICABLE',
+  PAYMENT_DISCOUNT_UNAVAILABLE: 'PAYMENT.DISCOUNT_UNAVAILABLE',
+  PAYMENT_DISCOUNT_NOT_SUPPORTED: 'PAYMENT.DISCOUNT_NOT_SUPPORTED',
+  PAYMENT_DISCOUNT_BELOW_MINIMUM: 'PAYMENT.DISCOUNT_BELOW_MINIMUM',
+  PAYMENT_NOTHING_TO_REFUND: 'PAYMENT.NOTHING_TO_REFUND',
+
+  // modules/catalog (운영 경로 — 상품 · 가격): 코드 중복 409 · 등급 중복 409 · 같은 (상품, 주기, 통화) 에 판매 기간이 겹침 409 · 가격 값이 잘못됨 400 · 없는 상품 · 가격 404
+  CATALOG_CODE_TAKEN: 'CATALOG.CODE_TAKEN',
+  CATALOG_LEVEL_TAKEN: 'CATALOG.LEVEL_TAKEN',
+  CATALOG_PRICE_OVERLAP: 'CATALOG.PRICE_OVERLAP',
+  CATALOG_PRICE_INVALID: 'CATALOG.PRICE_INVALID',
+  CATALOG_NOT_FOUND: 'CATALOG.NOT_FOUND',
+} as const
+
+export type ErrorCodeValue = (typeof ErrorCodes)[keyof typeof ErrorCodes]
+
+/**
+ * 프론트가 응답을 못 해석했을 때 클라이언트가 직접 채우는 코드. 백엔드가 보낸 값이 아니다.
+ * (백엔드의 `HTTP.<STATUS>` 는 ApplicationException 보조 생성자가 만드는 동적 코드라 상수로 두지 않는다.)
+ */
+export const ClientErrorCodes = {
+  /** 4xx/5xx 인데 body 가 ApiError 계약(code · title · status)을 만족하지 않음 */
+  HTTP_ERROR: 'CLIENT.HTTP_ERROR',
+  /** 응답 자체를 못 받음(네트워크 · 타임아웃 · 취소). status 는 0 */
+  NETWORK_ERROR: 'CLIENT.NETWORK_ERROR',
+} as const
+
+/** `error` 가 [ApiRequestError] 이고 `apiError.code` 가 `codes` 중 하나면 true */
+export function isErrorCode(error: unknown, codes: string | readonly string[]): boolean {
+  if (!(error instanceof ApiRequestError)) return false
+  return (Array.isArray(codes) ? codes : [codes]).includes(error.apiError.code)
+}
+
+/**
+ * 429 가 알려 준 기다릴 시간(초). 본문 `data.retryAfterSeconds`(계약 0절)가 우선이고, 없으면 `Retry-After` 헤더.
+ * 429 가 아니거나 둘 다 없으면 undefined.
+ */
+export function retryAfterSeconds(error: unknown): number | undefined {
+  if (!(error instanceof ApiRequestError)) return undefined
+  const data = error.apiError.data
+  if (typeof data === 'object' && data !== null && 'retryAfterSeconds' in data) {
+    const value = Number((data as { retryAfterSeconds: unknown }).retryAfterSeconds)
+    if (Number.isFinite(value) && value >= 0) return value
+  }
+  return error.retryAfterHeader
+}

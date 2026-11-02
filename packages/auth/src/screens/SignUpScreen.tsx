@@ -1,0 +1,734 @@
+import { ApiRequestError, ErrorCodes } from '@arcbit/api-client'
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Field,
+  FormProblems,
+  Input,
+  useSubmitAttempt,
+  type FormProblem,
+} from '@arcbit/ui'
+import { useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import type { LoginIdRules } from '../account/loginIdRules'
+import { violationsOf } from '../account/passwordRules'
+import { useCodeClock } from '../codeClockContext'
+import { codeWindowOf, estimateCodeWindow } from '../codeWindow'
+import type { PendingSignUp } from '../signUpPending'
+import type {
+  PasswordPolicy,
+  LoginIdAvailability,
+  PasswordViolation,
+  SignUpRequest,
+  SignUpStatus,
+} from '../account/types'
+import { AuthLayout } from './AuthLayout'
+import { VerifyCodePanel } from './VerifyCodePanel'
+import { LoginIdField } from './LoginIdField'
+import { LoginIdRetry } from './LoginIdRetry'
+import { loginIdProblemText } from './loginId'
+import { loginIdServerError } from './loginIdServerError'
+import { useLoginIdAvailability } from './useLoginIdAvailability'
+import { NewPasswordFields } from './NewPasswordFields'
+import { PasswordHints } from './PasswordHints'
+import { SocialButtons } from './SocialButtons'
+import styles from './auth.module.css'
+import {
+  displayNameFieldError,
+  displayNameProblem,
+  resolveDisplayNameMode,
+  type DisplayNameMode,
+} from './displayName'
+import { NicknameRetry } from './NicknameRetry'
+import { codeFailureOf } from './codeErrors'
+import { authErrorMessage, type AuthErrorInfo } from './errors'
+import { mergeLabels, type AuthLabels } from './labels'
+import { resolveMethods, type SignInMethodsConfig } from './methods'
+import { usePasswordConfirm } from './passwordConfirm'
+import { passwordProblems } from './passwordProblems'
+import { useCountdown } from './useCountdown'
+
+/** 동의 항목 하나 — 약관 · 방침의 판(version)을 함께 넘긴다. 화면은 체크한 판을 콜백으로 보고만 한다(서버 문서와 저장은 `@arcbit/legal`) */
+export type ConsentItem = {
+  id: string
+  version: string
+  label: ReactNode
+  required?: boolean
+}
+export type AcceptedConsent = { id: string; version: string; locale?: string }
+
+/** 동의 자리를 통째로 맡길 때(`renderConsents`) 화면이 슬롯에 주는 것 — `@arcbit/legal` 의 `SignUpConsents` 가 받는다 */
+export type ConsentSlotApi = {
+  /** 체크가 바뀔 때마다 — 체크한 항목과 「필수가 모두 체크됐는가」 */
+  onChange: (accepted: AcceptedConsent[], complete: boolean) => void
+  /** 필수를 안 채우고 제출을 시도했다 */
+  showError: boolean
+  /** 서버가 `LEGAL.CONSENT_REQUIRED`(그 사이 약관이 바뀜)로 거절할 때마다 올라간다 — 슬롯은 문서를 다시 읽는다 */
+  refreshKey: number
+}
+
+export type CaptchaSlotApi = {
+  /** 캡차가 토큰을 받으면(없애면 null) */
+  onToken: (token: string | null) => void
+}
+
+/** 로그인 아이디를 켠 서버(발견에 `loginId` 키가 있을 때)에서 가입이 아이디를 받는 데 필요한 것 */
+export type SignUpLoginId = {
+  /** `GET /auth/methods` 의 `loginId` 규칙 */
+  rules: LoginIdRules
+  /** 실시간 확인 - `accountApi` 를 그대로 넘기면 된다 */
+  api: { checkLoginId: (loginId: string) => Promise<LoginIdAvailability> }
+}
+
+// 꺼진 서버에서도 훅은 늘 불린다 - 값이 늘 비어 있어 아무것도 묻지 않는다
+const NO_LOGIN_ID: SignUpLoginId = {
+  rules: { minLength: 1, maxLength: 1 },
+  api: { checkLoginId: () => Promise.reject(new Error('login id is off')) },
+}
+
+export type SignUpSubmit = Omit<SignUpRequest, 'captchaToken' | 'consents'> & {
+  captchaToken?: string
+  /** 체크한 동의 항목과 그 판 */
+  consents: AcceptedConsent[]
+}
+
+export type SignUpScreenProps = {
+  /** `GET /account/password/policy` 의 값(앱이 불러 넘긴다 — 불러오는 중에는 undefined 로 두면 규칙 목록을 숨긴다) */
+  policy?: PasswordPolicy
+  labels?: Partial<AuthLabels>
+  onSignUp: (request: SignUpSubmit) => Promise<{
+    status: SignUpStatus
+    signUpId?: string
+    /** 서버가 주면 그 값이 이긴다 — 없으면(옛 서버) `codeTtlSeconds` 로 어림 */
+    expiresAt?: string | number
+    /** `null` 이면 이 시도는 더 다시 보낼 수 없다 */
+    resendAvailableAt?: string | number | null
+  }>
+  /** 가입 응답에 `signUpId` 가 오면 같은 화면에서 6자리 인증번호를 받는다. 이 함수가 코드를 서버에 내고(성공하면 가입이 끝나고 바로 로그인) 그 뒤의 이동은 호출자가 한다 */
+  onVerifyCode: (
+    signUpId: string,
+    code: string,
+    options?: { displayName?: string; loginId?: string },
+  ) => Promise<unknown>
+  /** 코드 단계의 「새 코드 받기」(같은 시도에 새 코드) */
+  onResendCode?: (signUpId: string) => Promise<unknown>
+  /** 새로고침해도 코드 단계가 이어지도록 앱이 보관해 둔 진행 중 가입(탭 하나의 sessionStorage 등) */
+  initialPending?: PendingSignUp
+  /** 코드 단계에 들어가거나(값) 벗어나면(null) — 앱이 보관한다 */
+  onPendingChange?: (pending: PendingSignUp | null) => void
+  /** 서버가 만료 시각을 안 줄 때 어림하는 코드 유효 시간(초, 백엔드 `verification.code-ttl` 기본 10분) */
+  codeTtlSeconds?: number
+  /** 다시 받기 쿨다운(초, 백엔드 기본 30) */
+  resendCooldownSeconds?: number
+  /** 메일 인증이 꺼진 앱(`CREATED`) — 바로 쓸 수 있는 계정 */
+  onCreated?: () => void
+  /** 소셜 가입(소셜 로그인과 같은 흐름) */
+  methods?: SignInMethodsConfig
+  onSocialSignIn?: (provider: string) => void
+  /** 캡차 자리 — 위젯을 그리고 토큰을 `onToken` 으로 올린다(Turnstile 같은 캡차 위젯) */
+  renderCaptcha?: (api: CaptchaSlotApi) => ReactNode
+  /** 로그인 아이디를 받는다(서버가 켰을 때만 - 키가 없으면 화면은 지금과 같다). 이메일 다음, 비밀번호 앞에 아이디 칸과 실시간 확인이 생기고 요청에 `loginId` 가 실린다 */
+  loginId?: SignUpLoginId
+  /** 약관 · 방침 동의 자리 — 체크한 판을 `onSignUp` 의 `consents` 와 `onConsentsChange` 로 보고한다 */
+  consents?: ConsentItem[]
+  /** 동의 자리를 통째로 슬롯에 맡긴다(서버가 문서를 쥘 때) — 있으면 `consents` 대신 쓰이고, 슬롯이 「완료」를 알리기 전에는 제출하지 않는다 */
+  renderConsents?: (api: ConsentSlotApi) => ReactNode
+  onConsentsChange?: (accepted: AcceptedConsent[]) => void
+  /** 닉네임을 묻는다(기본 `off` — 가입은 짧을수록 좋다). `optional` 비워도 된다 · `required` 비우면 막힌다 */
+  displayName?: DisplayNameMode
+  /** 옛 이름 — `true` 면 `displayName="optional"`. `displayName` 이 있으면 그쪽이 이긴다 */
+  askDisplayName?: boolean
+  /** 비밀번호를 한 번 더 입력받는다(기본 false — 모듈은 중립이라 앱이 켠다) — 다르면 제출하지 않는다. 확인 값은 서버로 보내지 않는다 */
+  confirmPassword?: boolean
+  signInTo?: string
+  /** 가입 요청에 실어 보낼 로케일 · 시간대 */
+  locale?: string
+  timeZone?: string
+}
+
+/** 가입 화면 — 비밀번호 규칙은 서버 정책에서 읽는다. 응답은 늘 같은 모양이라(주소가 있든 없든) 메일로 받은 6자리 인증번호를 같은 화면에서 입력하고, 맞으면 바로 로그인한다 */
+export function SignUpScreen({
+  policy,
+  labels: given,
+  onSignUp,
+  onVerifyCode,
+  onResendCode,
+  initialPending,
+  onPendingChange,
+  codeTtlSeconds = 600,
+  resendCooldownSeconds = 30,
+  onCreated,
+  methods,
+  onSocialSignIn,
+  renderCaptcha,
+  consents = [],
+  renderConsents,
+  onConsentsChange,
+  displayName: displayNameMode,
+  askDisplayName,
+  loginId: loginIdOn,
+  confirmPassword = false,
+  signInTo,
+  locale,
+  timeZone,
+}: SignUpScreenProps) {
+  const labels = mergeLabels(given)
+  const now = useCodeClock()
+  const enabled = resolveMethods(methods)
+  const [email, setEmail] = useState(initialPending?.email ?? '') // 새로고침 뒤 「처음부터」로 돌아와도 주소는 남는다
+  const [password, setPassword] = useState('')
+  const nicknameMode = resolveDisplayNameMode(displayNameMode, askDisplayName)
+  const [displayName, setDisplayName] = useState('')
+  const [displayNameError, setDisplayNameError] = useState<string | undefined>()
+  const [loginIdValue, setLoginIdValue] = useState('')
+  const [loginIdError, setLoginIdError] = useState<string | undefined>()
+  const loginIdSetup = loginIdOn ?? NO_LOGIN_ID
+  const idCheck = useLoginIdAvailability({
+    api: loginIdSetup.api,
+    value: loginIdOn ? loginIdValue : '',
+    rules: loginIdSetup.rules,
+  })
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const [slotAccepted, setSlotAccepted] = useState<AcceptedConsent[]>([])
+  const [slotComplete, setSlotComplete] = useState(!renderConsents)
+  const [consentRefresh, setConsentRefresh] = useState(0)
+  const uid = useId()
+  const ids = {
+    email: `${uid}-email`,
+    loginId: `${uid}-login-id`,
+    password: `${uid}-password`,
+    displayName: `${uid}-display-name`,
+    confirm: `${uid}-confirm`,
+    consents: `${uid}-consents`,
+  }
+  const attempt = useSubmitAttempt()
+  const confirm = usePasswordConfirm({
+    enabled: confirmPassword,
+    password,
+    attempted: attempt.attempted,
+    labels,
+  })
+  const consentsMissing = renderConsents
+    ? !slotComplete
+    : consents.some((c) => c.required && !checked[c.id])
+  // 제출을 시도한 뒤에는 이 값이 곧바로 따라 바뀐다 — 모자란 동의를 체크하면 오류가 바로 사라진다
+  const consentError = attempt.attempted && consentsMissing
+  const slotApi = useMemo<ConsentSlotApi>(
+    () => ({
+      onChange: (accepted, complete) => {
+        setSlotAccepted(accepted)
+        setSlotComplete(complete)
+      },
+      showError: consentError,
+      refreshKey: consentRefresh,
+    }),
+    [consentError, consentRefresh],
+  )
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<AuthErrorInfo | null>(null)
+  const [serverViolations, setServerViolations] = useState<PasswordViolation[]>([])
+  const [emailError, setEmailError] = useState<string | undefined>()
+  const [pending, setPending] = useState(initialPending ?? null)
+  /** 인증번호 단계에서 닉네임이 겹쳤다 — 같은 시도 · 같은 코드로 닉네임만 다시 보낸다(`code` 는 방금 낸 번호, 메모리에만) */
+  const [retry, setRetry] = useState<{
+    code: string
+    name: string
+    error?: string
+    busy?: boolean
+  } | null>(null)
+  /** 인증번호 단계에서 아이디가 그 사이 나갔다 - 같은 시도 · 같은 코드로 아이디만 다시 보낸다(`value` 는 마지막으로 낸 정규화한 아이디) */
+  const [idRetry, setIdRetry] = useState<{
+    code: string
+    value: string
+    error?: string
+    busy?: boolean
+  } | null>(null)
+  const wait = useCountdown()
+
+  /** 인증번호를 낸다 - 이미 다시 받은 닉네임 · 아이디가 있으면 함께 싣는다(없으면 인수 둘, 지금과 같다) */
+  function verifyCode(
+    code: string,
+    signUpId: string,
+    over: { displayName?: string; loginId?: string } = {},
+  ) {
+    const options = {
+      ...(retry ? { displayName: retry.name.trim() } : {}),
+      ...(idRetry ? { loginId: idRetry.value } : {}),
+      ...over,
+    }
+    return Object.keys(options).length > 0
+      ? onVerifyCode(signUpId, code, options)
+      : onVerifyCode(signUpId, code)
+  }
+
+  function toggleConsent(item: ConsentItem, value: boolean) {
+    const next = { ...checked, [item.id]: value }
+    setChecked(next)
+    onConsentsChange?.(
+      consents.filter((c) => next[c.id]).map(({ id, version }) => ({ id, version })),
+    )
+  }
+
+  const emailProblem = !email.trim()
+    ? labels.problemEmailMissing
+    : !/^[^\s@]+@[^\s@]+$/.test(email.trim())
+      ? labels.problemEmailInvalid
+      : undefined
+  const loginIdProblemMessage =
+    loginIdOn && !idCheck.canSubmit
+      ? idCheck.status === 'taken'
+        ? labels.errorLoginIdTaken
+        : idCheck.problem && loginIdProblemText(idCheck.problem, loginIdOn.rules, labels)
+      : undefined
+  const passwordCheck = passwordProblems({ labels, password, email, policy, confirm, ids })
+  const passwordProblem = passwordCheck.passwordError
+  const nicknameProblem = displayNameProblem(displayName, nicknameMode, labels)
+  const problems: FormProblem[] = [
+    ...(emailProblem ? [{ key: 'email', message: emailProblem, target: ids.email }] : []),
+    ...(loginIdProblemMessage
+      ? [{ key: 'loginId', message: loginIdProblemMessage, target: ids.loginId }]
+      : []),
+    ...(nicknameProblem
+      ? [{ key: 'displayName', message: nicknameProblem, target: ids.displayName }]
+      : []),
+    ...passwordCheck.problems.filter((p) => p.key === 'password'),
+    ...serverViolations.map((code) => ({
+      key: `violation-${code}`,
+      message: labels.passwordRule[code],
+      target: ids.password,
+    })),
+    ...passwordCheck.problems.filter((p) => p.key === 'confirm'),
+    ...(consentsMissing
+      ? [{ key: 'consents', message: labels.problemConsentMissing, target: ids.consents }]
+      : []),
+  ]
+  const shownProblems = attempt.attempted ? problems : []
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setFailure(null)
+    setEmailError(undefined)
+    setDisplayNameError(undefined)
+    setLoginIdError(undefined)
+    setServerViolations([])
+    if (loginIdOn) idCheck.touch()
+    // 막힌 이유는 버튼 위 요약 + 칸 옆 오류로 보이고, 첫 틀린 칸으로 포커스가 간다. 버튼은 늘 눌린다(꺼진 버튼은 이유를 말하지 못한다)
+    const blocking = problems.filter((p) => !p.key.startsWith('violation-'))
+    if (blocking.length > 0) return attempt.fail(blocking[0].target)
+    setBusy(true)
+    try {
+      const accepted = renderConsents
+        ? slotAccepted
+        : consents.filter((c) => checked[c.id]).map(({ id, version }) => ({ id, version }))
+      const result = await onSignUp({
+        email,
+        ...(loginIdOn ? { loginId: idCheck.normalized } : {}),
+        password,
+        ...(nicknameMode !== 'off' && displayName.trim()
+          ? { displayName: displayName.trim() }
+          : {}),
+        ...(locale ? { locale } : {}),
+        ...(timeZone ? { timeZone } : {}),
+        ...(captchaToken ? { captchaToken } : {}),
+        consents: accepted,
+      })
+      if (result.status === 'VERIFICATION_SENT') {
+        setPassword('') // 메일 확인 화면에 남아 「주소가 틀렸어요」로 돌아와도 비밀번호는 다시 받는다
+        confirm.reset()
+        attempt.reset()
+        // 메일 인증이 켜져 있으면 늘 signUpId 가 온다(주소가 새것이든 이미 있든 같은 모양) — 코드 입력 단계로
+        if (result.signUpId) {
+          // 만료 · 재요청 시각: 서버가 응답에 주면 그 값, 아니면(옛 서버) 문서화된 유효 시간으로 어림한다. 코드는 저장하지 않는다
+          const sent =
+            codeWindowOf(result) ??
+            estimateCodeWindow(now(), {
+              ttlSeconds: codeTtlSeconds,
+              cooldownSeconds: resendCooldownSeconds,
+            })
+          const next: PendingSignUp = {
+            email,
+            signUpId: result.signUpId,
+            expiresAt: sent.expiresAt,
+            ...(sent.resendAvailableAt ? { resendAvailableAt: sent.resendAvailableAt } : {}),
+            ...(sent.resendExhausted ? { resendExhausted: true as const } : {}),
+            ...(sent.source === 'estimate' ? { estimated: true } : {}),
+          }
+          setPending(next)
+          onPendingChange?.(next)
+        }
+      } else onCreated?.()
+    } catch (error) {
+      const violations = violationsOf(error)
+      if (violations.length > 0) {
+        setServerViolations(violations)
+        attempt.fail(ids.password)
+      } else {
+        const info = authErrorMessage(error, labels)
+        const idMessage = loginIdOn
+          ? loginIdServerError(error, { value: loginIdValue, rules: loginIdOn.rules, labels })
+          : undefined
+        if (
+          error instanceof ApiRequestError &&
+          error.apiError.code === ErrorCodes.COMMON_VALIDATION_FAILED
+        ) {
+          const emailField = error.apiError.errors?.find((e) => e.field === 'email')
+          if (emailField) {
+            setEmailError(emailField.message ?? labels.errorValidation)
+            attempt.fail(ids.email)
+          }
+          // 서버 설정으로 닉네임이 필수가 되면 빠진 가입은 필드 `displayName` 의 검증 오류로 온다
+          const nameField = error.apiError.errors?.find((e) => e.field === 'displayName')
+          if (nameField) {
+            setDisplayNameError(displayNameFieldError(error, labels) ?? labels.errorValidation)
+            attempt.fail(ids.displayName)
+          }
+        }
+        if (info.code === ErrorCodes.LEGAL_CONSENT_REQUIRED) setConsentRefresh((n) => n + 1)
+        if (info.code === ErrorCodes.ACCOUNT_EMAIL_TAKEN) {
+          setEmailError(info.message)
+          attempt.fail(ids.email)
+        } else if (info.code === ErrorCodes.ACCOUNT_DISPLAY_NAME_TAKEN) {
+          setDisplayNameError(info.message)
+          attempt.fail(ids.displayName)
+        } else if (idMessage) {
+          if (info.code === ErrorCodes.ACCOUNT_LOGIN_ID_TAKEN) idCheck.markTaken(idCheck.normalized) // 서버가 쓸 수 없다고 한 값 - 같은 값으로 돌아와도 「쓸 수 있어요」가 아니다
+          setLoginIdError(idMessage)
+          attempt.fail(ids.loginId)
+        } else setFailure(info)
+        if (info.retryAfterSeconds) wait.start(info.retryAfterSeconds)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (pending) {
+    const leave = () => {
+      setRetry(null)
+      setIdRetry(null)
+      setPending(null)
+      onPendingChange?.(null)
+    }
+    return (
+      <AuthLayout title={labels.signUpTitle}>
+        <VerifyCodePanel
+          email={pending.email}
+          labels={given}
+          expiresAt={pending.expiresAt}
+          expirySource={pending.estimated ? 'estimate' : 'server'}
+          resendAvailableAt={pending.resendAvailableAt}
+          resendExhausted={pending.resendExhausted}
+          resendExhaustedNote={labels.codeNoMoreResendsSignUp}
+          codeTtlSeconds={codeTtlSeconds}
+          resendCooldownSeconds={resendCooldownSeconds}
+          expiredResend="restart" // 만료 뒤의 다시 받기: 새 서버는 새 `expiresAt` 을 주고(그 자리에서 다시 센다), 옛 서버는 조용히 무시한다(시각이 없으면 처음부터)
+          above={
+            (idRetry && loginIdOn) || retry ? (
+              <>
+                {idRetry && loginIdOn && (
+                  <LoginIdRetry
+                    initialValue={idRetry.value}
+                    rules={loginIdOn.rules}
+                    api={loginIdOn.api}
+                    error={idRetry.error}
+                    busy={idRetry.busy}
+                    labels={labels}
+                    onChange={() =>
+                      setIdRetry((current) => current && { ...current, error: undefined })
+                    }
+                    onSubmit={async (normalized) => {
+                      setIdRetry({ ...idRetry, value: normalized, busy: true, error: undefined })
+                      try {
+                        await verifyCode(idRetry.code, pending.signUpId, { loginId: normalized })
+                        onPendingChange?.(null)
+                      } catch (error) {
+                        // 아이디는 받아들여졌고 이번엔 닉네임이 겹친다 - 닉네임 칸도 연다(마지막 제출에는 둘 다 실린다)
+                        if (
+                          authErrorMessage(error, labels).code ===
+                          ErrorCodes.ACCOUNT_DISPLAY_NAME_TAKEN
+                        ) {
+                          setRetry({
+                            code: idRetry.code,
+                            name: retry?.name ?? displayName,
+                            error: labels.errorDisplayNameTaken,
+                          })
+                          setIdRetry(
+                            (current) => current && { ...current, busy: false, error: undefined },
+                          )
+                          return
+                        }
+                        const failure = codeFailureOf(error)
+                        const message =
+                          loginIdServerError(error, {
+                            value: normalized,
+                            rules: loginIdOn.rules,
+                            labels,
+                          }) ??
+                          (failure.kind === 'invalid'
+                            ? labels.codeInvalid(failure.attemptsLeft)
+                            : authErrorMessage(error, labels).message)
+                        setIdRetry(
+                          (current) => current && { ...current, busy: false, error: message },
+                        ) // await 뒤: 그 사이 고친 입력을 낡은 값으로 덮지 않는다
+                      }
+                    }}
+                  />
+                )}
+                {retry && (
+                  <NicknameRetry
+                    value={retry.name}
+                    error={retry.error}
+                    busy={retry.busy}
+                    labels={labels}
+                    onChange={(name) => setRetry({ ...retry, name, error: undefined })}
+                    onSubmit={async () => {
+                      const problem = displayNameProblem(retry.name, 'required', labels)
+                      if (problem) return setRetry({ ...retry, error: problem })
+                      setRetry({ ...retry, busy: true, error: undefined })
+                      try {
+                        await verifyCode(retry.code, pending.signUpId, {
+                          displayName: retry.name.trim(),
+                        })
+                        onPendingChange?.(null)
+                      } catch (error) {
+                        // 닉네임은 받아들여졌고 이번엔 아이디가 겹친다 - 아이디 칸을 연다(「문제가 생겼어요」를 닉네임 칸에 띄우지 않는다)
+                        if (
+                          loginIdOn &&
+                          authErrorMessage(error, labels).code === ErrorCodes.ACCOUNT_LOGIN_ID_TAKEN
+                        ) {
+                          setIdRetry({
+                            code: retry.code,
+                            value: idRetry?.value ?? idCheck.normalized,
+                            error: labels.errorLoginIdTaken,
+                          })
+                          setRetry(
+                            (current) => current && { ...current, busy: false, error: undefined },
+                          )
+                          return
+                        }
+                        const failure = codeFailureOf(error)
+                        const message =
+                          authErrorMessage(error, labels).code ===
+                          ErrorCodes.ACCOUNT_DISPLAY_NAME_TAKEN
+                            ? labels.errorDisplayNameTaken
+                            : (displayNameFieldError(error, labels) ??
+                              (failure.kind === 'invalid'
+                                ? labels.codeInvalid(failure.attemptsLeft)
+                                : authErrorMessage(error, labels).message))
+                        setRetry(
+                          (current) => current && { ...current, busy: false, error: message },
+                        ) // await 뒤: 그 사이 고친 입력을 낡은 값으로 덮지 않는다
+                      }
+                    }}
+                  />
+                )}
+              </>
+            ) : undefined
+          }
+          onVerify={async (code) => {
+            try {
+              await verifyCode(code, pending.signUpId)
+            } catch (error) {
+              // 아이디가 그 사이 나갔다: 시도는 닫히지 않는다 - 그 자리에서 아이디만 다시 받아 같은 코드로 다시 확인한다
+              if (
+                loginIdOn &&
+                authErrorMessage(error, labels).code === ErrorCodes.ACCOUNT_LOGIN_ID_TAKEN
+              ) {
+                setIdRetry({
+                  code,
+                  value: idRetry?.value ?? idCheck.normalized,
+                  error: labels.errorLoginIdTaken,
+                })
+                return
+              }
+              // 닉네임 중복 금지 서버: 인증이 끝나는 순간에야 겹침을 안다. **시도는 닫히지 않는다** — 그 자리에서 닉네임만 다시 입력받아 같은 코드로 다시 확인한다
+              if (authErrorMessage(error, labels).code === ErrorCodes.ACCOUNT_DISPLAY_NAME_TAKEN) {
+                setRetry({
+                  code,
+                  name: retry?.name ?? displayName,
+                  error: labels.errorDisplayNameTaken,
+                })
+                return
+              }
+              throw error
+            }
+            onPendingChange?.(null)
+          }}
+          onResend={
+            onResendCode
+              ? async () => {
+                  const response = await onResendCode(pending.signUpId)
+                  // 서버가 새 만료 · 재요청 시각을 주면 보관한 상태도 갱신한다 — 새로고침해도 새 10분이 이어진다
+                  const window = codeWindowOf(response)
+                  if (window) {
+                    const next: PendingSignUp = {
+                      email: pending.email,
+                      signUpId: pending.signUpId,
+                      expiresAt: window.expiresAt,
+                      ...(window.resendAvailableAt
+                        ? { resendAvailableAt: window.resendAvailableAt }
+                        : {}),
+                      ...(window.resendExhausted ? { resendExhausted: true as const } : {}),
+                    }
+                    setPending(next)
+                    onPendingChange?.(next)
+                  }
+                  return response
+                }
+              : undefined
+          }
+          onStartOver={leave} // 이메일은 남고 비밀번호는 비워져 있다
+        />
+      </AuthLayout>
+    )
+  }
+
+  const showSocial = enabled.social.length > 0 && !!onSocialSignIn
+  const closed = failure?.code === ErrorCodes.ACCOUNT_SIGN_UP_CLOSED
+  return (
+    <AuthLayout
+      title={closed ? labels.signUpClosedTitle : labels.signUpTitle}
+      subtitle={closed ? undefined : labels.signUpSubtitle}
+      footer={
+        signInTo ? (
+          <>
+            <span>{labels.signUpHaveAccount}</span>
+            <Link className={styles.link} to={signInTo}>
+              {labels.signUpSignIn}
+            </Link>
+          </>
+        ) : undefined
+      }
+    >
+      <div className={styles.stack}>
+        {showSocial && (
+          <>
+            <SocialButtons
+              providers={enabled.social}
+              labels={labels}
+              onSelect={(p) => onSocialSignIn?.(p)}
+            />
+            <div className={styles.divider}>{labels.or}</div>
+          </>
+        )}
+        <form className={styles.form} onSubmit={submit} aria-label={labels.signUpTitle} noValidate>
+          {failure && <Alert tone="danger">{failure.message}</Alert>}
+          <Field
+            id={ids.email}
+            label={labels.email}
+            required
+            error={emailError ?? (attempt.attempted ? emailProblem : undefined)}
+          >
+            {(control) => (
+              <Input
+                {...control}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          {loginIdOn && (
+            <LoginIdField
+              id={ids.loginId}
+              value={loginIdValue}
+              onChange={(next) => {
+                setLoginIdValue(next)
+                setLoginIdError(undefined)
+              }}
+              check={idCheck}
+              rules={loginIdOn.rules}
+              labels={labels}
+              serverError={loginIdError}
+            />
+          )}
+          {nicknameMode !== 'off' && (
+            <Field
+              id={ids.displayName}
+              label={labels.displayName}
+              hint={labels.displayNameHint}
+              required={nicknameMode === 'required'}
+              error={displayNameError ?? (attempt.attempted ? nicknameProblem : undefined)}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  autoComplete="nickname"
+                  value={displayName}
+                  onChange={(event) => {
+                    setDisplayName(event.target.value)
+                    setDisplayNameError(undefined)
+                  }}
+                />
+              )}
+            </Field>
+          )}
+          <NewPasswordFields
+            label={labels.password}
+            labels={labels}
+            value={password}
+            onChange={setPassword}
+            confirm={confirm}
+            ids={ids}
+            error={attempt.attempted ? passwordProblem : undefined}
+          />
+          {policy && (
+            <PasswordHints
+              policy={policy}
+              password={password}
+              email={email}
+              labels={labels}
+              serverViolations={serverViolations}
+            />
+          )}
+          {renderCaptcha && (
+            <div className={styles.stack} aria-label={labels.signUpCaptcha}>
+              {renderCaptcha({ onToken: setCaptchaToken })}
+            </div>
+          )}
+          {renderConsents && (
+            <div id={ids.consents} className={styles.stack}>
+              {renderConsents(slotApi)}
+            </div>
+          )}
+          {!renderConsents && consents.length > 0 && (
+            <div id={ids.consents} className={styles.stack}>
+              {consents.map((item) => (
+                <Checkbox
+                  key={item.id}
+                  label={
+                    <>
+                      {item.label}
+                      {item.required && (
+                        <span className={styles.muted}> ({labels.signUpConsentRequired})</span>
+                      )}
+                    </>
+                  }
+                  checked={!!checked[item.id]}
+                  onChange={(event) => toggleConsent(item, event.target.checked)}
+                  error={
+                    consentError && item.required && !checked[item.id]
+                      ? labels.signUpConsentRequired
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
+          <FormProblems title={labels.formProblemsTitle} problems={shownProblems} />
+          <Button
+            type="submit"
+            loading={busy}
+            loadingLabel={labels.submitting}
+            disabled={wait.seconds > 0}
+          >
+            {wait.seconds > 0 ? labels.errorRetryIn(wait.seconds) : labels.signUpSubmit}
+          </Button>
+        </form>
+      </div>
+    </AuthLayout>
+  )
+}

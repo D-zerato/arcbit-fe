@@ -1,0 +1,199 @@
+import { Alert, Button, FormProblems, SettingsRow, useSubmitAttempt } from '@arcbit/ui'
+import { SectionShell } from './SectionShell'
+import { SettingsDialog } from './SettingsDialog'
+import { useId, useState, type FormEvent } from 'react'
+import { violationsOf } from '../account/passwordRules'
+import type { PasswordPolicy, PasswordViolation } from '../account/types'
+import type { ReauthCredential } from '../account/accountApi'
+import { isReauthFailure, reauthKindOf, type ReauthSubject } from '../reauth/kind'
+import { NewPasswordFields } from './NewPasswordFields'
+import { ReauthProof } from './ReauthProof'
+import { PasswordHints } from './PasswordHints'
+import styles from './auth.module.css'
+import { mergeLabels, type AuthLabels } from './labels'
+import { usePasswordConfirm } from './passwordConfirm'
+import { passwordProblems } from './passwordProblems'
+import { useAction } from './useAction'
+
+export type PasswordSectionProps = {
+  /** 다시 인증의 종류를 고르는 `me` 의 부분(`reauthSubjectOf(me)`) — 비밀번호가 없는 계정은 현재 비밀번호 대신 메일로 받은 인증번호로 첫 비밀번호를 정한다 */
+  subject: ReauthSubject
+  policy?: PasswordPolicy
+  email?: string
+  onChange: (request: ReauthCredential & { newPassword: string }) => Promise<unknown>
+  /** `POST /account/reauth/confirmation` — 비밀번호 없는 계정의 인증번호 메일 */
+  requestReauthCode: () => Promise<unknown>
+  labels?: Partial<AuthLabels>
+  /** 새 비밀번호를 한 번 더 입력받는다(기본 false — 모듈은 중립이라 앱이 켠다) — 다르면 제출하지 않는다. 확인 값은 서버로 보내지 않는다 */
+  confirmPassword?: boolean
+  /** 첫 렌더부터 대화상자가 열려 있다 - 서버 렌더 시험 · 스토리용 */
+  initiallyOpen?: boolean
+  /** 줄만 그린다(`AccountSettings` 의 카드 안) - 아니면 제목 있는 카드 한 장에 담는다 */
+  row?: boolean
+}
+
+/**
+ * 비밀번호 절 — 비밀번호가 있는지 없는지만 보이고, 「바꾸기 / 정하기」가 양식을 대화상자로 연다. 바꾸면 다른 기기는 로그아웃되고 이 기기는 그대로.
+ * 첫 비밀번호는 메일 주소가 인증된 계정만(주소가 없으면 정할 수 없다)
+ */
+export function PasswordSection(props: PasswordSectionProps) {
+  const labels = mergeLabels(props.labels)
+  const hasPassword = props.subject.hasPassword
+  const [open, setOpen] = useState(props.initiallyOpen ?? false)
+  const [done, setDone] = useState(false)
+  if (reauthKindOf(props.subject) === 'provider')
+    return (
+      <SectionShell row={props.row} id="password" title={labels.sectionPassword}>
+        <SettingsRow label={labels.sectionPassword} value={labels.passwordNeedsEmail} />
+      </SectionShell>
+    )
+  const action = hasPassword ? labels.passwordChangeSubmit : labels.passwordSetTitle
+  return (
+    <SectionShell row={props.row} id="password" title={labels.sectionPassword}>
+      <SettingsRow
+        label={labels.sectionPassword}
+        value={hasPassword ? labels.passwordHasValue : labels.passwordHasNone}
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-label={`${labels.sectionPassword} ${hasPassword ? labels.rowChange : labels.passwordSetTitle}`}
+            onClick={() => {
+              setDone(false)
+              setOpen(true)
+            }}
+          >
+            {hasPassword ? labels.rowChange : labels.passwordSetTitle}
+          </Button>
+        }
+        dialogs={
+          <>
+            <SettingsDialog
+              open={open}
+              onClose={() => setOpen(false)}
+              title={action}
+              closeLabel={labels.dialogClose}
+            >
+              <PasswordForm
+                {...props}
+                onDone={() => {
+                  setDone(true)
+                  setOpen(false)
+                }}
+                onCancel={() => setOpen(false)}
+              />
+            </SettingsDialog>
+          </>
+        }
+      >
+        {done && <Alert tone="success">{labels.passwordChanged}</Alert>}
+      </SettingsRow>
+    </SectionShell>
+  )
+}
+
+function PasswordForm({
+  subject,
+  policy,
+  email,
+  onChange,
+  requestReauthCode,
+  labels: given,
+  confirmPassword = false,
+  onDone,
+  onCancel,
+}: PasswordSectionProps & { onDone: () => void; onCancel: () => void }) {
+  const labels = mergeLabels(given)
+  const hasPassword = subject.hasPassword
+  const kind = reauthKindOf(subject)
+  const [next, setNext] = useState('')
+  const [proof, setProof] = useState<ReauthCredential | null>(null)
+  const [violations, setViolations] = useState<PasswordViolation[]>([])
+  const action = useAction(labels)
+  const uid = useId()
+  const ids = { password: `${uid}-password`, confirm: `${uid}-confirm`, proof: `${uid}-proof` }
+  const attempt = useSubmitAttempt()
+  const confirm = usePasswordConfirm({
+    enabled: confirmPassword,
+    password: next,
+    attempted: attempt.attempted,
+    labels,
+  })
+  const check = passwordProblems({ labels, password: next, email, policy, confirm, ids })
+  // 본인 확인(현재 비밀번호 · 메일 인증번호)이 모자라도 버튼은 눌린다 — 막힌 이유를 말해야 하니까
+  const problems = [
+    ...(proof === null
+      ? [{ key: 'proof', message: labels.problemProofMissing, target: ids.proof }]
+      : []),
+    ...check.problems,
+  ]
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setViolations([])
+    if (problems.length > 0) return attempt.fail(problems[0].target)
+    const ok = await action.run(() => onChange({ ...proof, newPassword: next }))
+    if (ok) onDone()
+  }
+  // 정책 위반은 힌트 목록이 보여 준다 — 오류 줄에는 중복해서 올리지 않는다
+  const serverViolations = violationsOf(action.raw)
+  if (serverViolations.length > 0 && violations.length === 0) setViolations(serverViolations)
+  const proofFailure = isReauthFailure(action.raw) ? action.raw : undefined
+  const showError = action.error && !proofFailure && serverViolations.length === 0
+
+  return (
+    <>
+      <form
+        className={styles.form}
+        onSubmit={submit}
+        aria-label={labels.sectionPassword}
+        noValidate
+      >
+        <p className={styles.muted}>
+          {hasPassword ? labels.passwordOtherSessionsNote : labels.passwordSetHint}
+        </p>
+        {showError && <Alert tone="danger">{action.error?.message}</Alert>}
+        <div id={ids.proof}>
+          <ReauthProof
+            kind={kind}
+            email={subject.email}
+            requestCode={hasPassword ? undefined : requestReauthCode}
+            onChange={setProof}
+            failure={proofFailure}
+            labels={given}
+          />
+        </div>
+        <NewPasswordFields
+          label={labels.newPassword}
+          labels={labels}
+          value={next}
+          onChange={setNext}
+          confirm={confirm}
+          ids={ids}
+          error={attempt.attempted ? check.passwordError : undefined}
+        />
+        {policy && (
+          <PasswordHints
+            policy={policy}
+            password={next}
+            email={email}
+            labels={labels}
+            serverViolations={violations}
+          />
+        )}
+        <FormProblems
+          title={labels.formProblemsTitle}
+          problems={attempt.attempted ? problems : []}
+        />
+        <div className={styles.row}>
+          <Button type="submit" loading={action.busy} loadingLabel={labels.submitting}>
+            {hasPassword ? labels.passwordChangeSubmit : labels.passwordSetTitle}
+          </Button>
+          <Button variant="secondary" onClick={onCancel}>
+            {labels.cancel}
+          </Button>
+        </div>
+      </form>
+    </>
+  )
+}

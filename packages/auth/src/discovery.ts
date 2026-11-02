@@ -1,0 +1,227 @@
+import type { LoginIdRules } from './account/loginIdRules'
+import type { AuthApi, RefreshDelivery } from './authApi'
+import type { SignInMethodsConfig } from './screens/methods'
+import type { SocialProviderConfig } from './social'
+import type { AuthMethodsWire, SocialAuthorizeInfo, SocialMode } from './types'
+
+/*
+ * 로그인 방법 발견 — 백엔드의 `GET /auth/methods` 가 말해 주는 것을 앱이 따른다(환경변수는 선택적 덮어쓰기).
+ * 모양은 계약 FINAL-2b. 옛 백엔드(엔드포인트 없음 · 일부 필드 없음)에서도 안전한 쪽(비밀번호만 · 가입 닫힘)으로 읽는다.
+ */
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const MODES: readonly string[] = ['REQUIRED', 'SUPPORTED', 'UNSUPPORTED']
+const readMode = (value: unknown): SocialMode | undefined =>
+  typeof value === 'string' && MODES.includes(value) ? (value as SocialMode) : undefined
+
+function readAuthorize(value: unknown): SocialAuthorizeInfo | undefined {
+  if (!isRecord(value) || typeof value.url !== 'string' || !value.url) return undefined
+  if (!Array.isArray(value.scopes) || !value.scopes.every((s) => typeof s === 'string'))
+    return undefined
+  const params: Record<string, string> = {}
+  if (isRecord(value.params))
+    for (const [key, entry] of Object.entries(value.params))
+      if (typeof entry === 'string') params[key] = entry
+  return { url: value.url, scopes: value.scopes as string[], params }
+}
+
+/** 길이 규칙이 쓸 만한 정수 `1 ≤ min ≤ max` 일 때만 — 아니면 키가 없는 것으로 읽는다(기능이 꺼진 쪽이 안전하다) */
+function readLoginId(value: unknown): AuthMethodsWire['loginId'] {
+  if (!isRecord(value)) return undefined
+  const { minLength, maxLength } = value
+  if (!Number.isInteger(minLength) || !Number.isInteger(maxLength)) return undefined
+  const min = minLength as number
+  const max = maxLength as number
+  return min >= 1 && min <= max ? { minLength: min, maxLength: max } : undefined
+}
+
+export function normalizeMethodsInfo(raw: unknown): AuthMethodsWire {
+  const source = isRecord(raw) ? raw : {}
+  const signUp = isRecord(source.signUp) ? source.signUp : {}
+  const social = Array.isArray(source.social) ? source.social : []
+  const loginId = readLoginId(source.loginId)
+  return {
+    methods: Array.isArray(source.methods)
+      ? source.methods.filter((m): m is string => typeof m === 'string')
+      : [],
+    signUp: {
+      password: signUp.password === true,
+      emailVerification: signUp.emailVerification === true,
+      social: signUp.social === true,
+    },
+    social: social
+      .filter(
+        (entry): entry is Record<string, unknown> =>
+          isRecord(entry) && typeof entry.provider === 'string',
+      )
+      .map((entry) => {
+        const pkce = readMode(entry.pkce)
+        const nonce = readMode(entry.nonce)
+        const authorize = readAuthorize(entry.authorize)
+        return {
+          provider: entry.provider as string,
+          clientId: typeof entry.clientId === 'string' ? entry.clientId : null,
+          redirectUri: typeof entry.redirectUri === 'string' ? entry.redirectUri : null,
+          ...(pkce ? { pkce } : {}),
+          ...(nonce ? { nonce } : {}),
+          ...(authorize ? { authorize } : {}),
+        }
+      }),
+    captchaRequired: source.captchaRequired === true,
+    ...(loginId ? { loginId } : {}),
+    refreshDelivery:
+      source.refreshDelivery === 'body' || source.refreshDelivery === 'cookie'
+        ? source.refreshDelivery
+        : null,
+  }
+}
+
+export type DiscoveredMethods = {
+  methods: SignInMethodsConfig
+  /** 비밀번호 가입이 열려 있는가(가입 화면을 보일지) */
+  signUp: boolean
+  /** 소셜 리다이렉트에 필요한 공개 값 — 제공자 코드 → `createSocialLoginFlow` 설정 */
+  providers: Record<string, SocialProviderConfig>
+  /** 로그인 아이디를 켠 서버일 때만 키가 있다 - 길이 규칙(`loginIdProblem` 에 그대로 넘긴다) */
+  loginId?: LoginIdRules
+}
+
+export type MethodsFromInfoOptions = {
+  /** 백엔드가 clientId 를 모르는 제공자에 앱이 줄 clientId(보통 `VITE_SOCIAL_<제공자>_CLIENT_ID`) */
+  clientIds?: Record<string, string | undefined>
+  /** 백엔드가 `redirectUri` 를 안 줄 때 쓸 이 앱의 소셜 로그인 콜백 주소 */
+  defaultRedirectUri?: string
+}
+
+/** 백엔드의 답을 화면이 쓰는 모양으로 — clientId 가 있는(백엔드 또는 앱이 준) 제공자만 버튼이 된다 */
+export function methodsFromInfo(
+  info: AuthMethodsWire,
+  { clientIds = {}, defaultRedirectUri = '' }: MethodsFromInfoOptions = {},
+): DiscoveredMethods {
+  const providers: Record<string, SocialProviderConfig> = {}
+  for (const entry of info.social) {
+    const clientId = entry.clientId ?? clientIds[entry.provider]
+    if (!clientId) continue
+    providers[entry.provider] = {
+      clientId,
+      redirectUri: entry.redirectUri ?? defaultRedirectUri,
+      ...(entry.pkce ? { pkce: entry.pkce } : {}),
+      ...(entry.nonce ? { nonce: entry.nonce } : {}),
+      ...(entry.authorize ? { authorize: entry.authorize } : {}),
+    }
+  }
+  return {
+    methods: {
+      password: info.methods.includes('password'),
+      magicLink: info.methods.includes('magic_link'),
+      social: Object.keys(providers).map((provider) => ({ provider })),
+    },
+    signUp: info.signUp.password,
+    providers,
+    ...(info.loginId ? { loginId: info.loginId } : {}),
+  }
+}
+
+export type RedirectUriProblem = {
+  provider: string
+  kind: 'origin' | 'trailing-slash' | 'path'
+  message: string
+}
+
+/**
+ * 제공자 콘솔은 redirect_uri 를 **글자 그대로** 비교한다 — http/https · 호스트 · 포트 · 끝 슬래시 하나만 달라도 거절하거나(`redirect_uri_mismatch`),
+ * 코드가 이 앱에 라우트가 없는 곳으로 간다. 백엔드가 알려 준 `redirectUri` 가 이 앱의 콜백 주소(`expected`)와 다르면 어디가 다른지 말해 준다(개발 콘솔 경고용).
+ */
+export function redirectUriProblems(
+  social: AuthMethodsWire['social'],
+  expected: string,
+): RedirectUriProblem[] {
+  const problems: RedirectUriProblem[] = []
+  for (const entry of social) {
+    const given = entry.redirectUri
+    if (!given || given === expected) continue
+    const kind = diffKind(given, expected)
+    problems.push({
+      provider: entry.provider,
+      kind,
+      message: `${entry.provider}: the backend redirectUri "${given}" differs from this app's callback "${expected}" (${
+        kind === 'origin'
+          ? 'different http/https, host or port — the code would go to another origin'
+          : kind === 'trailing-slash'
+            ? 'a trailing slash — providers compare it exactly'
+            : 'a different path — this app has no callback route there'
+      }). Register exactly one of them at the provider and use the same value everywhere.`,
+    })
+  }
+  return problems
+}
+
+function diffKind(given: string, expected: string): RedirectUriProblem['kind'] {
+  try {
+    const a = new URL(given)
+    const b = new URL(expected)
+    if (a.origin !== b.origin) return 'origin'
+    return a.pathname.replace(/\/+$/, '') === b.pathname.replace(/\/+$/, '')
+      ? 'trailing-slash'
+      : 'path'
+  } catch {
+    return 'path'
+  }
+}
+
+/** 백엔드의 리프레시 전달 방식과 이 앱의 설정이 다르면 한 줄 — 갱신이 조용히 실패한다(쿠키 ↔ 본문). 같거나 백엔드가 모르면 null */
+export function deliveryMismatch(
+  info: AuthMethodsWire,
+  configured: RefreshDelivery,
+): string | null {
+  if (info.refreshDelivery === null || info.refreshDelivery === configured) return null
+  return `The backend delivers the refresh token by "${info.refreshDelivery}" but this app is configured for "${configured}" (VITE_AUTH_REFRESH_DELIVERY) — token refresh will fail until both agree.`
+}
+
+const FIVE_MINUTES = 5 * 60_000
+const cache = new WeakMap<
+  AuthApi,
+  { at: number; promise: Promise<AuthMethodsWire>; value?: AuthMethodsWire }
+>()
+
+/**
+ * 한 API 당 한 번 묻고 5분 동안 모든 화면이 같은 답을 쓴다(백엔드의 `Cache-Control: max-age=300` 과 같은 길이).
+ * 실패는 기억하지 않는다 — 다음 화면 · 다시 시도가 다시 묻는다.
+ */
+export function loadAuthMethods(
+  api: AuthApi,
+  { now = Date.now }: { now?: () => number } = {},
+): Promise<AuthMethodsWire> {
+  const known = cache.get(api)
+  if (known && now() - known.at < FIVE_MINUTES) return known.promise
+  const promise = api.methods().then(normalizeMethodsInfo)
+  const entry: { at: number; promise: Promise<AuthMethodsWire>; value?: AuthMethodsWire } = {
+    at: now(),
+    promise,
+  }
+  cache.set(api, entry)
+  promise.then(
+    (value) => {
+      entry.value = value
+    },
+    () => {
+      if (cache.get(api) === entry) cache.delete(api) // 실패는 기억하지 않는다
+    },
+  )
+  return promise
+}
+
+/** 이미 받아 둔(5분 안의) 답 — 화면 사이를 오갈 때 로딩 깜박임 없이 바로 그린다. 없으면 undefined */
+export function peekAuthMethods(
+  api: AuthApi,
+  { now = Date.now }: { now?: () => number } = {},
+): AuthMethodsWire | undefined {
+  const known = cache.get(api)
+  return known && now() - known.at < FIVE_MINUTES ? known.value : undefined
+}
+
+export function clearAuthMethodsCache(api: AuthApi): void {
+  cache.delete(api)
+}

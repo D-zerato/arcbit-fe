@@ -1,0 +1,53 @@
+import { Button } from '@arcbit/ui'
+import styles from './auth.module.css'
+import type { AuthLabels } from './labels'
+import type { SocialProviderButton } from './methods'
+import { providerPresentation } from './providers'
+
+export type SocialButtonsProps = {
+  providers: SocialProviderButton[]
+  labels: AuthLabels
+  onSelect: (provider: string) => void | Promise<unknown>
+  /** 버튼 글자를 바꾼다(계정 연결 화면의 「Google 연결」) — 기본은 로그인 문구 */
+  textOf?: (provider: SocialProviderButton, providerName: string) => string
+  disabled?: boolean
+  /** 이 제공자의 단추를 눈에 띄게 강조한다(강조 테두리 · `data-link-intent`) — 「연결을 이어서 하세요」의 대상 */
+  highlight?: string
+}
+
+/** 소셜 제공자 버튼 묶음 — 어떤 제공자가 있는지는 앱의 설정이 정한다 */
+export function SocialButtons({
+  providers,
+  labels,
+  onSelect,
+  textOf,
+  disabled,
+  highlight,
+}: SocialButtonsProps) {
+  return (
+    <div className={styles.stack}>
+      {providers.map((provider) => {
+        const name = labels.providerNames[provider.provider] ?? provider.provider
+        const text =
+          provider.label ??
+          (textOf
+            ? textOf(provider, name)
+            : (labels.providerSignInText[provider.provider] ?? labels.signInWithProvider(name)))
+        return (
+          <Button
+            key={provider.provider}
+            variant="secondary"
+            disabled={disabled}
+            {...(highlight === provider.provider
+              ? { className: styles.linkIntent, 'data-link-intent': 'true' }
+              : {})}
+            onClick={() => onSelect(provider.provider)}
+          >
+            {provider.icon ?? providerPresentation(provider.provider).icon}
+            {text}
+          </Button>
+        )
+      })}
+    </div>
+  )
+}

@@ -1,0 +1,29 @@
+{
+  "name": "arcbit-fe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --pool forks --testTimeout 30000 --hookTimeout 60000",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@arcbit/api-client": "workspace:*",
+    "@arcbit/auth": "workspace:*",
+    "@arcbit/legal": "workspace:*",
+    "@arcbit/theme": "workspace:*",
+    "@arcbit/time": "workspace:*",
+    "@arcbit/tokens": "workspace:*",
+    "@arcbit/ui": "workspace:*",
+    "@tanstack/react-query": "^5.99.2",
+    "@tanstack/react-query-devtools": "^5.99.2",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.1",
+    "sonner": "^2.0.7"
+  }
+}

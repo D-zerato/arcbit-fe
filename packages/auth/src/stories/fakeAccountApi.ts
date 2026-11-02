@@ -1,0 +1,476 @@
+import type { AccountApi, ReauthCredential } from '../account/accountApi'
+import type { AccountMe, AccountSession, SignInIdentity } from '../account/types'
+
+import {
+  loginIdProblem,
+  loginIdServerCode,
+  normalizeLoginId,
+  type LoginIdRules,
+} from '../account/loginIdRules'
+import { FAKE_POLICY, apiError, fieldError } from '../test/apiFixtures'
+
+export { FAKE_POLICY, apiError, fieldError }
+
+/** 지금부터 n분 뒤의 ISO 시각 — 코드 만료는 시계에 따라 달라지므로 고정 날짜를 쓰면 스토리가 곧 만료된 화면이 된다 */
+const inMinutes = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString()
+
+const identity = (over: Partial<SignInIdentity>): SignInIdentity => ({
+  id: 'idn_pw',
+  method: 'password',
+  subject: 'ann@example.com',
+  verified: true,
+  createdAt: '2026-01-01T00:00:00Z',
+  lastUsedAt: '2026-10-05T09:00:00Z',
+  removable: true,
+  ...over,
+})
+
+/** 로그인 아이디를 **켠** 서버 — 이 객체가 있으면 `me.loginId` 키가 생기고(없으면 옛 서버처럼 키 · 세 호출 모두 없다) */
+export type FakeLoginIdOptions = Partial<LoginIdRules> & {
+  /** 이미 정한 아이디(대문자도 되고 소문자로 저장된다). 없으면 아직 안 정했다 - `me.loginId` null, 허용 목록 밖의 호출은 403 `ACCOUNT.LOGIN_ID_REQUIRED` */
+  value?: string
+  /** 이미 쓰고 있는 · 탈퇴한 · 예약된 아이디(이유는 구분하지 않는다) */
+  taken?: string[]
+  /** 가입 요청 때는 비어 있었는데 인증번호 단계에서 남이 가져간 아이디 - 그 단계가 409 `LOGIN_ID_TAKEN`(시도는 닫히지 않는다), 같은 코드로 다른 아이디를 싣고 다시 */
+  takenOnConfirm?: string[]
+}
+
+export type FakeAccountOptions = {
+  /** 로그인 아이디를 켠 서버(기본은 꺼짐 - 키 없는 서버와 같다) */
+  loginId?: FakeLoginIdOptions
+  /** 비밀번호 없이 소셜 · 링크로만 가입한 계정(주소는 있다) */
+  passwordless?: boolean
+  /** 이메일 주소가 없는 계정(Naver 등) — 이미 연결된 제공자로 다시 동의해 본인 확인 */
+  noAddress?: boolean
+  /** 주소 없는 계정의 유일한 로그인 수단(LINE · X). 없으면 naver + magic_link */
+  noAddressProvider?: string
+  /**
+   * 이메일을 **필수**로 켠 앱에서 주소 없이 가입한 계정(카카오 · 네이버 · X …) — `me.emailRequired: true`, 허용 목록 밖의 호출은 403 `ACCOUNT.EMAIL_REQUIRED`,
+   * 첫 주소는 다시 인증 없이 받는다(주소 → 인증번호). 확인되면 `emailRequired: false`
+   */
+  emailRequired?: boolean
+  /**
+   * 이메일을 **쓰기 때** 받는 앱(`required-when: WRITE`)에서 주소 없이 가입한 계정 — `me.emailRequired: false`(키는 있다) · `me.emailRequiredToWrite: true`.
+   * 읽기(GET)는 통과하고 변경 요청은 403 `ACCOUNT.EMAIL_REQUIRED`, 허용 목록(내 정보 고치기 · 세션 · 이메일 등록 · 버리기)은 통과한다. 등록이 끝나면 `emailRequiredToWrite: false`
+   */
+  emailRequiredToWrite?: boolean
+  /** 주소 없는 계정이 첫 주소를 다시 인증 **없이** 등록한다(마지막 로그인 1시간 안). 기본은 꺼짐 — 지난 화면들이 제공자 재동의를 기대한다. `emailRequired` 는 켠다 */
+  firstRegistrationOpen?: boolean
+  /** 마지막 로그인이 1시간을 넘었다 — 첫 주소도 403 `ACCOUNT.REAUTH_REQUIRED`(제공자 재동의 `socialReauth` 를 싣고 다시) */
+  reauthWindowExpired?: boolean
+  /** 다른 계정이 쓰는 주소들 — 같은 202 가 오지만 인증번호는 가지 않는다(그 주소로는 「이미 계정이 있어요」 메일만 간다): 어떤 번호도 `CODE_INVALID` */
+  takenEmails?: string[]
+  /** 이미 등록된 연락받을 이메일 */
+  contactEmail?: string
+  /** 연락받을 이메일 기능을 끈 서버 — 요청이 404, `me` 에 `contactEmail` 키가 없다(키 없음 = 꺼짐 · null = 켜져 있고 아직 없음) */
+  contactEmailOff?: boolean
+  /** 같은 기능을 끈 **옛** 서버 — 요청이 404 인데 `me.contactEmail` 은 null 로 키가 남아 있다(구역이 그려졌다가 404 를 받고서야 사라진다) */
+  contactEmailLegacyOff?: boolean
+  /** 로그인 수단이 하나뿐 */
+  onlyMethod?: boolean
+  /** 새 주소의 인증번호를 기다리는 이메일 변경이 이미 있다(새로고침 뒤) */
+  pendingEmail?: string
+  /** 그 요청의 만료까지 남은 분(기본 10 — 백엔드 `email-change.ttl`). 서버가 말해 주는 `pendingEmailExpiresAt` 이 된다 */
+  pendingExpiresInMinutes?: number
+  /** 메일 인증을 끈 앱 — 가입이 바로 `CREATED` */
+  verificationOff?: boolean
+  /** 정지된 계정 — 스스로 탈퇴할 수 없다(`delete` · `delete/confirmation` → 403 `ACCOUNT.SUSPENDED_CANNOT_DELETE`) */
+  suspended?: boolean
+  /** 가입이 막힌 주소 — 코드를 맞게 입력해도 `verify-email` 이 403 `ACCOUNT.REGISTRATION_BLOCKED`(메일함을 증명한 사람에게만 보인다) */
+  registrationBlocked?: boolean
+  /**
+   * 새 백엔드처럼 코드를 보내는 요청(`email/change` · `reauth/confirmation` · `delete/confirmation`)이 응답에 `expiresAt` · `resendAvailableAt` 을 준다 —
+   * 지금부터 n분 뒤 만료. 없으면 옛 서버처럼 본문이 없다(화면이 어림한다)
+   */
+  codeWindowMinutes?: number
+  /** 서버가 붙인 4자리 꼬리표(`Ann#4821`) — `GET /account/me` 의 `displayTag` */
+  displayTag?: string
+  /** 이미 쓰고 있는 닉네임들 — 프로필 수정이 409 `ACCOUNT.DISPLAY_NAME_TAKEN`(닉네임 중복 금지 서버). 앞뒤 공백을 뗀 값으로 견준다 */
+  takenNicknames?: string[]
+  /** 닉네임을 이만큼 바꾸면 다음 변경이 429 `ACCOUNT.RATE_LIMITED`(`retryAfterSeconds` 3시간 12분) — 서버의 `display-name.change-limit` */
+  nicknameChangeLimit?: number
+  /** 서버 규칙으로 쓸 수 없는 닉네임(400, 필드 `displayName`, 코드 `Reserved`, 영어 message) */
+  reservedNicknames?: string[]
+  /** 코드를 보내는 요청의 응답이 `resendAvailableAt: null` — 이 시도는 더 다시 보낼 수 없다(FINAL-5 R2) */
+  resendExhausted?: boolean
+}
+
+/** 가짜 서버가 받아 주는 6자리 코드(가입 · 이메일 변경 · 다시 인증 · 삭제 모두) */
+export const FAKE_CODE = '123456'
+
+/** 가짜 서버가 받아 주는 주소 없는 계정의 제공자 증명(새 인가 코드) */
+export const FAKE_SOCIAL_REAUTH = { provider: 'naver', authorizationCode: 'fresh-code' }
+
+/** 백엔드 없이 도는 `AccountApi` — 상태를 기억하고 계약의 오류 코드(현재 비밀번호 틀림 · 인증번호 틀림 · 마지막 수단 …)를 낸다. 스토리 · 테스트 전용 */
+export function createFakeAccountApi(options: FakeAccountOptions = {}): AccountApi & {
+  calls: string[]
+} {
+  const calls: string[] = []
+  /** 주소를 요구하는 앱(로그인 직후 · 쓰기 때)에서 주소 없이 가입한 계정 */
+  const addressless = options.emailRequired || options.emailRequiredToWrite
+  const noAddress = options.noAddress || addressless
+  const methods: SignInIdentity[] = options.noAddressProvider
+    ? [
+        identity({
+          id: 'idn_p',
+          method: options.noAddressProvider,
+          subject: null,
+          removable: false,
+        }),
+      ]
+    : addressless
+      ? [identity({ id: 'idn_k', method: 'kakao', subject: null, removable: false })]
+      : options.noAddress
+        ? [
+            identity({ id: 'idn_n', method: 'naver', subject: null }),
+            identity({ id: 'idn_m', method: 'magic_link' }),
+          ]
+        : options.passwordless
+          ? [
+              identity({ id: 'idn_g', method: 'google', subject: null }),
+              identity({ id: 'idn_m', method: 'magic_link' }),
+            ]
+          : options.onlyMethod
+            ? [identity({ removable: false })]
+            : [identity({}), identity({ id: 'idn_g', method: 'google', subject: null })]
+  const me: AccountMe = {
+    id: 'acc_demo',
+    email: noAddress ? null : 'ann@example.com',
+    emailVerified: !noAddress,
+    displayName: 'Ann',
+    displayTag: options.displayTag ?? null,
+    locale: 'en',
+    timeZone: 'Asia/Seoul',
+    roles: ['USER'],
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00Z',
+    hasPassword: !options.passwordless && !noAddress,
+    methods,
+    ...(options.emailRequired
+      ? { emailRequired: true }
+      : options.emailRequiredToWrite
+        ? { emailRequired: false, emailRequiredToWrite: true }
+        : {}),
+    ...(options.contactEmailOff
+      ? {}
+      : {
+          contactEmail: options.contactEmailLegacyOff ? null : (options.contactEmail ?? null),
+        }),
+    pendingEmail: options.pendingEmail ?? null,
+    pendingEmailExpiresAt: options.pendingEmail
+      ? inMinutes(options.pendingExpiresInMinutes ?? 10)
+      : null,
+  }
+  /** 코드를 보내는 요청의 응답 본문 — `codeWindowMinutes` 가 있을 때만 서버 값을 준다 */
+  const codeSent = () =>
+    options.codeWindowMinutes === undefined
+      ? undefined
+      : {
+          expiresAt: inMinutes(options.codeWindowMinutes),
+          resendAvailableAt: options.resendExhausted
+            ? null
+            : new Date(Date.now() + 30_000).toISOString(),
+        }
+  const notSuspended = () => {
+    if (options.suspended) throw apiError('ACCOUNT.SUSPENDED_CANNOT_DELETE', 403)
+  }
+  /** 이메일 필수 앱에서 주소 없는 계정이 허용 목록 밖을 부르면 — 서버의 인터셉터와 같다 */
+  /** `passesWhenWriting`: 쓰기 때 방식에서도 통과하는 호출(읽기 · `PATCH /account/me`) */
+  const emailGate = (passesWhenWriting = false) => {
+    loginIdGate()
+    if (me.emailRequired === true) throw apiError('ACCOUNT.EMAIL_REQUIRED', 403)
+    // 쓰기 때 방식: 읽기와 내 정보 고치기는 통과, 나머지 변경 요청만 막는다
+    if (me.emailRequiredToWrite === true && !passesWhenWriting)
+      throw apiError('ACCOUNT.EMAIL_REQUIRED', 403)
+  }
+  const idOptions = options.loginId
+  const idRules: LoginIdRules = {
+    minLength: idOptions?.minLength ?? 4,
+    maxLength: idOptions?.maxLength ?? 20,
+  }
+  const takenIds = new Set((idOptions?.taken ?? []).map(normalizeLoginId))
+  const takenOnConfirm = new Set((idOptions?.takenOnConfirm ?? []).map(normalizeLoginId))
+  if (idOptions) me.loginId = idOptions.value ? normalizeLoginId(idOptions.value) : null
+  /** 아이디를 켜지 않은 서버에서는 세 호출이 없다(404) */
+  const loginIdOn = () => {
+    if (!idOptions) throw apiError('COMMON.NOT_FOUND', 404)
+  }
+  /** 서버의 인터셉터 - 아이디가 없는 계정은 허용 목록 밖이 403 `ACCOUNT.LOGIN_ID_REQUIRED`(이메일 · 약관 막보다 먼저) */
+  const loginIdGate = () => {
+    if (idOptions && me.loginId === null) throw apiError('ACCOUNT.LOGIN_ID_REQUIRED', 403)
+  }
+  /** 형식이 틀리면 필드 오류(400) - 서버의 message 는 영어다 */
+  const checkLoginIdFormat = (value: string) => {
+    const problem = loginIdProblem(value, idRules)
+    if (problem)
+      throw fieldError('loginId', loginIdServerCode(problem), 'English from the server: login id')
+  }
+  let signUpLoginId: string | undefined
+  const taken = new Set((options.takenEmails ?? []).map((e) => e.toLowerCase()))
+  let pendingTaken = false
+  let pendingContact: string | null = null
+  let codeAttempts = 5
+  const wrongCode = () => {
+    codeAttempts -= 1
+    if (codeAttempts <= 0) throw apiError('ACCOUNT.CODE_EXPIRED', 410)
+    throw apiError('ACCOUNT.CODE_INVALID', 400, { attemptsLeft: codeAttempts })
+  }
+  /** 서버가 강제하는 다시 인증 — 비밀번호가 있으면 현재 비밀번호, 없으면 메일로 받은 6자리, 주소도 없으면 제공자 증명 */
+  const reauth = (
+    c: ReauthCredential = {},
+    wrongPasswordCode = 'ACCOUNT.CURRENT_PASSWORD_INVALID',
+  ) => {
+    if (me.hasPassword) {
+      if (c.currentPassword !== 'old-password-1') throw apiError(wrongPasswordCode, 400)
+      return
+    }
+    if (me.email) {
+      if (!c.confirmationCode) throw apiError('ACCOUNT.REAUTH_REQUIRED', 403)
+      if (c.confirmationCode !== FAKE_CODE) wrongCode()
+      return
+    }
+    if (!c.socialReauth) throw apiError('ACCOUNT.REAUTH_REQUIRED', 403)
+    if (c.socialReauth.authorizationCode !== FAKE_SOCIAL_REAUTH.authorizationCode)
+      throw apiError('ACCOUNT.REAUTH_FAILED', 400)
+  }
+  let sessions: AccountSession[] = [
+    {
+      id: 'ses_1',
+      deviceName: 'This laptop',
+      userAgent: null,
+      ip: '203.0.113.7',
+      createdAt: '2026-10-01T00:00:00Z',
+      lastUsedAt: '2026-10-06T08:00:00Z',
+      current: true,
+    },
+    {
+      id: 'ses_2',
+      deviceName: 'Pixel 9',
+      userAgent: null,
+      ip: '198.51.100.4',
+      createdAt: '2026-09-20T00:00:00Z',
+      lastUsedAt: '2026-10-04T18:30:00Z',
+      current: false,
+    },
+    {
+      id: 'ses_3',
+      deviceName: null,
+      userAgent: null,
+      ip: null,
+      createdAt: '2026-09-01T00:00:00Z',
+      lastUsedAt: '2026-09-30T10:00:00Z',
+      current: false,
+    },
+  ]
+  let nicknameChanges = 0
+  const track = <T>(name: string, value: T) => {
+    calls.push(name)
+    return Promise.resolve(value)
+  }
+  return {
+    calls,
+    signUp: async (request) => {
+      calls.push('signUp')
+      if (idOptions && request.loginId !== undefined) {
+        checkLoginIdFormat(request.loginId)
+        const id = normalizeLoginId(request.loginId)
+        if (takenIds.has(id)) throw apiError('ACCOUNT.LOGIN_ID_TAKEN', 409)
+        signUpLoginId = id
+      }
+      return {
+        ...(options.verificationOff
+          ? { status: 'CREATED' as const }
+          : { status: 'VERIFICATION_SENT' as const, signUpId: 'sid-1' }),
+      }
+    },
+    verifySignUpCode: async (_signUpId, code, replacement) => {
+      calls.push('verifySignUpCode')
+      if (code !== FAKE_CODE) wrongCode()
+      if (options.registrationBlocked) throw apiError('ACCOUNT.REGISTRATION_BLOCKED', 403)
+      if (idOptions) {
+        if (replacement?.loginId !== undefined) checkLoginIdFormat(replacement.loginId)
+        const id =
+          replacement?.loginId !== undefined ? normalizeLoginId(replacement.loginId) : signUpLoginId
+        // 남이 가져갔으면 409 - 시도는 닫히지 않는다(같은 코드로 다른 아이디를 다시)
+        if (id && (takenIds.has(id) || takenOnConfirm.has(id)))
+          throw apiError('ACCOUNT.LOGIN_ID_TAKEN', 409)
+      }
+      return {
+        accessToken: 'fake',
+        tokenType: 'Bearer',
+        expiresAt: '2099-01-01T00:00:00Z',
+        principal: { accountId: 'acc_demo', roles: [] },
+      }
+    },
+    resendSignUpCode: () => track('resendSignUpCode', undefined),
+    confirmEmailChangeCode: async (code) => {
+      calls.push('confirmEmailChangeCode')
+      if (!me.pendingEmail) throw apiError('ACCOUNT.CODE_EXPIRED', 410)
+      if (code !== FAKE_CODE || pendingTaken) wrongCode()
+      me.email = me.pendingEmail
+      me.emailVerified = true
+      me.pendingEmail = null
+      me.pendingEmailExpiresAt = null
+      if (me.emailRequired !== undefined) me.emailRequired = false
+      if (me.emailRequiredToWrite !== undefined) me.emailRequiredToWrite = false
+      codeAttempts = 5
+    },
+    forgotPassword: () => track('forgotPassword', undefined),
+    checkLoginId: async (loginId) => {
+      calls.push('checkLoginId')
+      loginIdOn()
+      const normalized = normalizeLoginId(loginId)
+      const problem = loginIdProblem(loginId, idRules)
+      if (problem)
+        return {
+          normalized,
+          available: false,
+          reason: 'INVALID' as const,
+          code: loginIdServerCode(problem),
+        }
+      if (takenIds.has(normalized) || me.loginId === normalized)
+        return { normalized, available: false, reason: 'TAKEN' as const }
+      return { normalized, available: true }
+    },
+    setLoginId: async (loginId) => {
+      calls.push('setLoginId')
+      loginIdOn()
+      if (me.loginId) throw apiError('ACCOUNT.LOGIN_ID_ALREADY_SET', 409)
+      checkLoginIdFormat(loginId)
+      const id = normalizeLoginId(loginId)
+      if (takenIds.has(id) || takenOnConfirm.has(id)) throw apiError('ACCOUNT.LOGIN_ID_TAKEN', 409)
+      me.loginId = id
+      return { ...me, methods: [...methods] }
+    },
+    forgotLoginId: async () => {
+      calls.push('forgotLoginId')
+      loginIdOn()
+    },
+    resetPassword: () => track('resetPassword', undefined),
+    passwordPolicy: () => track('passwordPolicy', FAKE_POLICY),
+    me: () => track('me', { ...me, methods: [...methods] }),
+    updateProfile: async (patch) => {
+      emailGate(true)
+      if (patch.displayName && options.takenNicknames?.includes(patch.displayName.trim()))
+        return Promise.reject(apiError('ACCOUNT.DISPLAY_NAME_TAKEN', 409))
+      if (patch.displayName && options.reservedNicknames?.includes(patch.displayName.trim()))
+        return Promise.reject(
+          fieldError('displayName', 'Reserved', 'English from the server: reserved nickname'),
+        )
+      if (patch.displayName && patch.displayName.trim() !== me.displayName) {
+        if (
+          options.nicknameChangeLimit !== undefined &&
+          nicknameChanges >= options.nicknameChangeLimit
+        )
+          return Promise.reject(
+            apiError('ACCOUNT.RATE_LIMITED', 429, { retryAfterSeconds: 3 * 3600 + 12 * 60 }),
+          )
+        nicknameChanges += 1
+      }
+      Object.assign(me, patch)
+      return track('updateProfile', { ...me })
+    },
+    changePassword: async ({ currentPassword, confirmationCode }) => {
+      calls.push('changePassword')
+      emailGate()
+      reauth({ currentPassword, confirmationCode })
+      if (!me.hasPassword) {
+        me.hasPassword = true
+        methods.push(identity({ id: 'idn_pw2' }))
+      }
+    },
+    changeEmail: async ({ newEmail, ...proof }) => {
+      calls.push('changeEmail')
+      const firstRegistration = !me.email && (addressless || options.firstRegistrationOpen)
+      if (firstRegistration && !options.reauthWindowExpired && !proof.socialReauth) {
+        // 첫 주소 · 마지막 로그인 1시간 안 — 다시 인증이 없다
+      } else if (!me.email && addressless && !proof.socialReauth)
+        throw apiError('ACCOUNT.REAUTH_REQUIRED', 403)
+      else reauth(proof)
+      pendingTaken = taken.has(newEmail.trim().toLowerCase())
+      codeAttempts = 5
+      me.pendingEmail = newEmail
+      me.pendingEmailExpiresAt = inMinutes(options.codeWindowMinutes ?? 10)
+      return codeSent()
+    },
+    requestReauthConfirmation: async () => {
+      emailGate()
+      return track('requestReauthConfirmation', codeSent())
+    },
+    requestContactEmail: async (email, proof) => {
+      calls.push('requestContactEmail')
+      emailGate()
+      if (options.contactEmailOff || options.contactEmailLegacyOff)
+        throw apiError('COMMON.NOT_FOUND', 404)
+      if (!me.email) reauth(proof ?? {}, 'ACCOUNT.REAUTH_FAILED') // 계정 이메일이 없는 계정만 제공자 증명이 든다
+      pendingContact = email.trim()
+      codeAttempts = 5
+      return codeSent() ?? { expiresAt: inMinutes(10), resendAvailableAt: inMinutes(0.5) }
+    },
+    confirmContactEmail: async (code) => {
+      calls.push('confirmContactEmail')
+      if (options.contactEmailOff || options.contactEmailLegacyOff)
+        throw apiError('COMMON.NOT_FOUND', 404)
+      if (!pendingContact) throw apiError('ACCOUNT.CODE_EXPIRED', 410)
+      if (code !== FAKE_CODE) wrongCode()
+      me.contactEmail = pendingContact
+      pendingContact = null
+    },
+    removeContactEmail: async () => {
+      calls.push('removeContactEmail')
+      if (options.contactEmailOff || options.contactEmailLegacyOff)
+        throw apiError('COMMON.NOT_FOUND', 404)
+      me.contactEmail = null
+    },
+    identities: async () => {
+      emailGate(true)
+      return track('identities', [...methods])
+    },
+    unlinkIdentity: async (id, proof) => {
+      calls.push(`unlink:${id}`)
+      emailGate()
+      reauth(proof)
+      if (methods.length <= 1) throw apiError('ACCOUNT.LAST_SIGN_IN_METHOD', 409)
+      methods.splice(
+        methods.findIndex((m) => m.id === id),
+        1,
+      )
+    },
+    linkSocial: async (_provider, _code, _uri, c) => {
+      calls.push('linkSocial')
+      emailGate()
+      reauth(c)
+      return identity({ id: 'idn_k', method: 'kakao', subject: null })
+    },
+    requestDeleteConfirmation: async () => {
+      notSuspended()
+      return track('requestDeleteConfirmation', codeSent())
+    },
+    discardAccount: async (proof) => {
+      calls.push('discardAccount')
+      if (me.email || !addressless) throw apiError('ACCOUNT.DISCARD_NOT_ALLOWED', 409)
+      // 방금 로그인한 세션은 다시 인증 없이, 오래된 세션은 제공자 증명이 든다
+      if (options.reauthWindowExpired || proof?.socialReauth)
+        reauth(proof ?? {}, 'ACCOUNT.REAUTH_FAILED')
+    },
+    deleteAccount: async (proof) => {
+      calls.push('deleteAccount')
+      notSuspended()
+      reauth(proof, 'ACCOUNT.REAUTH_FAILED')
+      return { status: 'DELETION_SCHEDULED' as const, purgeAfter: '2026-11-05T00:00:00Z' }
+    },
+    sessions: () => track('sessions', [...sessions]),
+    revokeSession: async (id) => {
+      calls.push(`revoke:${id}`)
+      sessions = sessions.filter((s) => s.id !== id)
+    },
+    revokeOtherSessions: async () => {
+      calls.push('revokeOthers')
+      sessions = sessions.filter((s) => s.current)
+    },
+    revokeAllSessions: async () => {
+      calls.push('revokeAll')
+      sessions = []
+    },
+  }
+}

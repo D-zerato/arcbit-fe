@@ -1,0 +1,62 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 같은 ref 의 앞선 실행은 새 push 가 오면 취소한다 — 낡은 커밋의 검사가 러너 줄을 잡고 있지 않게
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # rolldown(rc) 가 드물게 교착으로 멈춘다 — 매달리지 않게 끊는다
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          # 24: vite.config.ts 가 @arcbit/theme/vite 의 .ts 소스를 Node 로 직접 읽는다(타입 제거 — 22.18+ 도 가능)
+          node-version: '24'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      # 아래 명령은 모두 워크스페이스 전체(apps/* · packages/*)에 돈다
+      - run: pnpm lint
+      - run: pnpm tokens:check
+      - run: pnpm capabilities:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm format:check
+      - run: pnpm build
+
+  # stories-job:start
+  # 스토리 = 테스트: 진짜 브라우저(Playwright chromium, headless)에서 모든 스토리의 play · 접근성을 돈다. 빠른 단위 테스트(build 잡)와 따로라 서로 기다리지 않는다
+  stories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # rolldown(rc) 교착 · 브라우저 멈춤에 매달리지 않게 끊는다
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # 브라우저 내려받기는 캐시되지만 OS 라이브러리(apt)는 매번 필요하다
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm storybook:build
+        timeout-minutes: 5
+      - run: pnpm test:stories
+        timeout-minutes: 8
+  # stories-job:end

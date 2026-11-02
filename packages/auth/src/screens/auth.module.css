@@ -1,0 +1,246 @@
+.page {
+  display: grid;
+  gap: var(--space-xl);
+  max-width: 26rem;
+  margin-inline: auto;
+  padding-block: var(--space-xl);
+}
+
+.wide {
+  max-width: 48rem;
+}
+
+.intro {
+  display: grid;
+  gap: var(--space-sm);
+  text-align: center;
+}
+
+.intro p {
+  color: var(--text-muted);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.passwordRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* 입력칸이 남는 폭을 쓰고(줄어들 수 있게 min-width: 0) 토글은 제 크기 그대로 — 좁은 화면에서도 아래로 밀려 내려가지 않는다 */
+.passwordRow > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.passwordRow > button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-xs);
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.link {
+  color: var(--teal);
+  text-decoration: underline;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.hints {
+  display: grid;
+  gap: var(--space-sm);
+  font-size: var(--font-size-small);
+}
+
+.requirements {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.requirements li {
+  display: flex;
+  gap: var(--space-sm);
+  color: var(--text-muted);
+}
+
+.requirements li[data-met='true'] {
+  color: var(--text);
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-xs);
+}
+
+.meter span {
+  height: var(--space-xs);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+}
+
+.meter[data-level='1'] span:nth-child(-n + 1) {
+  background: var(--red);
+}
+
+.meter[data-level='2'] span:nth-child(-n + 2) {
+  background: var(--amber);
+}
+
+.meter[data-level='3'] span:nth-child(-n + 3),
+.meter[data-level='4'] span:nth-child(-n + 4) {
+  background: var(--teal);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.itemText {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.sections {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 「같은 이메일의 계정이 있다」 안내에서 이어 온 연결 단추(SignInMethodsSection) — 눈에 띄는 테두리 */
+.linkIntent {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* 소셜 제공자 마크(providers.tsx) — 글자 높이에 맞춘 작은 정사각형 */
+.providerIcon {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  flex: none;
+}
+
+/* 비밀번호 확인 칸이 맞게 입력됐다 — 색만이 아니라 도움말 글자(「일치해요」)가 함께 말한다 */
+.matches {
+  border-color: var(--teal);
+}
+
+.shownAs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.shownAs strong {
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+/* 아이디 칸의 상태 한 줄 — 글자가 말하고 색은 보조다. 긴 아이디도 좁은 화면에서 가로로 밀지 않는다 */
+.loginIdField {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.idStatus {
+  display: flex;
+  gap: var(--space-sm);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.idStatus:empty {
+  display: none;
+}
+
+.idStatus[data-status='available'] > span:first-child {
+  color: var(--teal);
+}
+
+.idStatus[data-status='unknown'] > span:first-child {
+  color: var(--amber);
+}
+
+/* 설정의 아이디 줄 - 끊어 쓸 곳 없는 긴 아이디도 좁은 화면에서 줄을 바꾼다 */
+.loginIdValue {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

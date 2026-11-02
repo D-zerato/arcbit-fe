@@ -1,0 +1,57 @@
+import type { Meta, StoryObj } from '@storybook/react-vite'
+import { toast } from 'sonner'
+import { expect, screen } from 'storybook/test'
+import { Button } from '@arcbit/ui'
+import { setTheme } from './theme'
+import { ThemedToaster } from './ThemedToaster'
+
+/** sonner 토스트도 고른 테마를 따른다. 앱 루트에 한 번 둔다(`<ThemedToaster />`), 토스트는 어디서든 `toast(...)` / `showApiError` 로 띄운다. */
+const meta = {
+  title: 'Packages/theme/ThemedToaster',
+  component: ThemedToaster,
+  parameters: { a11y: { test: 'error' } },
+  beforeEach: () => {
+    setTheme('dark')
+    return () => {
+      setTheme('system')
+      toast.dismiss() // 다음 스토리에 토스트가 남지 않게
+    }
+  },
+  render: () => (
+    <>
+      <Button onClick={() => toast.success('Saved')}>Notify</Button>
+      <ThemedToaster />
+    </>
+  ),
+} satisfies Meta<typeof ThemedToaster>
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const FollowsTheTheme: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Notify' }))
+    await expect(await screen.findByText('Saved')).toBeInTheDocument()
+    await expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute(
+      'data-sonner-theme',
+      'dark',
+    )
+  },
+}
+
+/** 헤더에 액션이 있는 앱은 토스트가 그것을 덮지 않게 아래쪽으로 둔다 */
+export const PositionIsAProp: Story = {
+  render: () => (
+    <>
+      <Button onClick={() => toast.success('Saved below')}>Notify</Button>
+      <ThemedToaster position="bottom-right" />
+    </>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Notify' }))
+    await expect(await screen.findByText('Saved below')).toBeInTheDocument()
+    await expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute(
+      'data-y-position',
+      'bottom',
+    )
+  },
+}

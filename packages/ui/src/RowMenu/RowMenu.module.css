@@ -1,0 +1,123 @@
+.root {
+  position: relative;
+  display: inline-block;
+}
+
+.button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-strong);
+  font-weight: 650;
+  line-height: 1;
+}
+
+.button:hover {
+  border-color: var(--teal);
+  background: var(--surface-muted);
+}
+
+.button[aria-expanded='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.button[aria-disabled='true'] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.button:focus-visible,
+.item:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + var(--space-xs));
+  z-index: 10;
+  display: grid;
+  /* 트랙의 최솟값을 0 으로 — 안 그러면 grid 항목이 내용의 고유 폭(min-width:auto)까지 늘어 긴 이름이 말줄임 없이 상자 밖으로 밀려 나간다 */
+  grid-template-columns: minmax(0, 1fr);
+  /* 내용에 맞춰 넓어진다(트랙 최솟값이 0 이어도 절대 배치 상자의 shrink-to-fit 폭이 단추 폭으로 떨어지지 않게) — 상한까지 */
+  width: max-content;
+  min-width: min(12rem, calc(100vw - var(--space-lg)));
+  /* 화면 폭에서 여백을 뺀 값이 상한 — 좁은 화면(320~414px)에서도 상자가 화면 안에 있다 */
+  max-width: min(24rem, calc(100vw - var(--space-lg)));
+  padding: var(--space-xs);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.menu[data-align='start'] {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+
+.menu[data-placement='top'] {
+  top: auto;
+  bottom: calc(100% + var(--space-xs));
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-xs) 0;
+  background: var(--border);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 34px;
+  padding: 0 var(--space-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  white-space: nowrap;
+  min-width: 0;
+  width: 100%;
+}
+
+.item:hover:not([aria-disabled='true']),
+.item:focus-visible {
+  background: var(--surface-muted);
+}
+
+.item[data-danger='true'] {
+  color: var(--red);
+}
+
+.item[aria-disabled='true'] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.itemLabel {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check {
+  flex: none;
+  display: inline-block;
+  width: 1ch;
+  color: var(--teal);
+}

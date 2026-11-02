@@ -1,0 +1,306 @@
+import {
+  Alert,
+  Button,
+  Field,
+  FormProblems,
+  Input,
+  useSubmitAttempt,
+  type FormProblem,
+} from '@arcbit/ui'
+import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { deletionPendingOf, type DeletionPending } from '../pendingDeletion'
+import { AuthLayout } from './AuthLayout'
+import { CheckEmailPanel } from './CheckEmailPanel'
+import { DeletionPendingScreen } from './DeletionPendingScreen'
+import { PasswordField } from './PasswordField'
+import { SocialButtons } from './SocialButtons'
+import styles from './auth.module.css'
+import { authErrorMessage, type AuthErrorInfo } from './errors'
+import { mergeLabels, type AuthLabels } from './labels'
+import { resolveMethods, type SignInMethodsConfig } from './methods'
+import {
+  identifierProblem,
+  magicLinkAddress,
+  signInCredentials,
+  type SignInCredentials,
+} from './signInIdentifier'
+import { useCountdown } from './useCountdown'
+
+export type SignInScreenProps = {
+  /** 켜 둔 로그인 방법 — 기본은 이메일 + 비밀번호만 */
+  methods?: SignInMethodsConfig
+  labels?: Partial<AuthLabels>
+  /**
+   * 이메일 + 비밀번호. 실패는 던진다(화면이 문구로 바꾼다) — 성공 뒤 이동은 호출자가.
+   * `loginId` 를 켠 화면에서 `@` 없는 입력만 `{ username, password }` 로 온다(그대로 `auth.login` 에 넘기면 된다)
+   */
+  onPasswordSignIn?: (credentials: SignInCredentials) => Promise<void>
+  /** 이메일 링크 요청(항상 성공처럼 보인다 — 서버가 존재 여부를 숨긴다) */
+  onMagicLinkRequest?: (email: string) => Promise<void>
+  /** 소셜 제공자로 보낸다(보통 `flow.start(provider)` 뒤 `window.location.assign(url)`). 못 시작하면(WebCrypto 없음 …) 던진다 — 화면이 문구로 바꾼다 */
+  onSocialSignIn?: (provider: string) => void | Promise<unknown>
+  signUpTo?: string
+  forgotPasswordTo?: string
+  /** 로그인 아이디를 켠 서버일 때(발견에 `loginId` 키) true — 칸이 「아이디 또는 이메일」(text)이 되고, `@` 없는 입력은 `username` 으로 간다. 기본 꺼짐 = 예전 화면 그대로 */
+  loginId?: boolean
+  /** 「아이디 찾기」 링크의 도착지 — `loginId` 가 켜져 있을 때만 그린다 */
+  forgotLoginIdTo?: string
+  /** 폼 위 안내(세션이 끝난 이유 …) */
+  notice?: string
+  /** 안내 옆 동작(방법을 못 불러왔을 때 「다시 시도」) */
+  noticeAction?: ReactNode
+  /** 처음 채워 둘 이메일(체험 계정 · 로그아웃 직후) */
+  initialEmail?: string
+  /** 탈퇴 대기 중인 계정이 맞는 비밀번호로 들어왔을 때(`403 AUTH.ACCOUNT_DELETION_PENDING`) 「탈퇴 취소」 — 토큰으로 취소하고 로그인한 뒤 이동은 호출자가. 안 주면 안내만 */
+  onCancelDeletion?: (restoreToken: string) => Promise<unknown>
+  /** 삭제 예정일 표기 */
+  formatDate?: (iso: string) => string
+}
+
+/** 로그인 화면 — 방법(비밀번호 · 링크 · 소셜)은 `methods` 가 정한다. 코드 분기(`AUTH.*`)는 `errors.ts` 한 곳 */
+export function SignInScreen({
+  methods,
+  labels: given,
+  onPasswordSignIn,
+  onMagicLinkRequest,
+  onSocialSignIn,
+  signUpTo,
+  forgotPasswordTo,
+  loginId = false,
+  forgotLoginIdTo,
+  notice,
+  noticeAction,
+  initialEmail = '',
+  onCancelDeletion,
+  formatDate,
+}: SignInScreenProps) {
+  const labels = mergeLabels(given)
+  const enabled = resolveMethods(methods)
+  const hasPassword = enabled.password && !!onPasswordSignIn
+  const hasMagic = enabled.magicLink && !!onMagicLinkRequest
+  const [mode, setMode] = useState<'password' | 'magic'>(hasPassword ? 'password' : 'magic')
+  const [email, setEmail] = useState(initialEmail)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [socialBusy, setSocialBusy] = useState(false)
+  const [failure, setFailure] = useState<AuthErrorInfo | null>(null)
+  const [magicSentTo, setMagicSentTo] = useState<string | null>(null)
+  /** 탈퇴 대기 응답 — 취소용 토큰은 이 상태(메모리)에만 있다 */
+  const [pendingDeletion, setPendingDeletion] = useState<DeletionPending | null>(null)
+  const wait = useCountdown()
+  const uid = useId()
+  const ids = { email: `${uid}-email`, password: `${uid}-password` }
+  const attempt = useSubmitAttempt()
+  /** 아이디를 받는 칸 - 비밀번호 방식이 있을 때만(링크만 있는 화면에는 아이디로 할 수 있는 것이 없다) */
+  const idBox = loginId && hasPassword
+  const emailProblem = identifierProblem(email, mode, loginId, labels)
+  const passwordProblem =
+    mode === 'password' && !password ? labels.problemPasswordMissing : undefined
+  const problems: FormProblem[] = [
+    ...(emailProblem ? [{ key: 'email', message: emailProblem, target: ids.email }] : []),
+    ...(passwordProblem
+      ? [{ key: 'password', message: passwordProblem, target: ids.password }]
+      : []),
+  ]
+
+  function fail(error: unknown) {
+    const pending = deletionPendingOf(error)
+    if (pending) {
+      setPassword('') // 「그대로 두기」로 돌아와도 비밀번호는 다시 받는다
+      setPendingDeletion(pending)
+      return
+    }
+    const info = authErrorMessage(error, labels)
+    setFailure(info)
+    if (info.retryAfterSeconds) wait.start(info.retryAfterSeconds)
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (problems.length > 0) return attempt.fail(problems[0].target) // 막힌 이유를 버튼 위에 말한다 — 버튼은 늘 눌린다
+    setBusy(true)
+    setFailure(null)
+    try {
+      if (mode === 'magic' && onMagicLinkRequest) {
+        const address = magicLinkAddress(email, loginId)
+        await onMagicLinkRequest(address)
+        setMagicSentTo(address)
+      } else if (onPasswordSignIn) {
+        await onPasswordSignIn(signInCredentials(email, password, loginId))
+      }
+    } catch (error) {
+      fail(error)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (pendingDeletion)
+    return (
+      <DeletionPendingScreen
+        pending={pendingDeletion}
+        onCancel={onCancelDeletion}
+        onLeave={() => setPendingDeletion(null)}
+        formatDate={formatDate}
+        labels={given}
+      />
+    )
+
+  if (magicSentTo && onMagicLinkRequest) {
+    return (
+      <AuthLayout title={labels.signInTitle}>
+        <CheckEmailPanel
+          email={magicSentTo}
+          labels={given}
+          title={labels.magicLinkSentTitle}
+          onResend={() => onMagicLinkRequest(magicSentTo)}
+          onStartOver={() => setMagicSentTo(null)}
+        />
+      </AuthLayout>
+    )
+  }
+
+  const throttled = wait.seconds > 0
+  const message = failure?.message
+  const showSocial = enabled.social.length > 0 && !!onSocialSignIn
+  const otherMethodAbove = hasPassword || hasMagic
+  /** 「아이디 찾기」 — 아이디를 켠 화면에서만 */
+  const idLink = loginId ? forgotLoginIdTo : undefined
+
+  return (
+    <AuthLayout
+      title={labels.signInTitle}
+      subtitle={labels.signInSubtitle}
+      footer={
+        signUpTo ? (
+          <>
+            <span>{labels.signInNoAccount}</span>
+            <Link className={styles.link} to={signUpTo}>
+              {labels.signInCreateAccount}
+            </Link>
+          </>
+        ) : undefined
+      }
+    >
+      <div className={styles.stack}>
+        {notice && (
+          <Alert tone="info" action={noticeAction}>
+            {notice}
+          </Alert>
+        )}
+        {(hasPassword || hasMagic) && (
+          <form
+            className={styles.form}
+            onSubmit={submit}
+            aria-label={labels.signInTitle}
+            noValidate
+          >
+            {failure && (
+              <Alert tone="danger">
+                {message}
+                {failure.reference && ` (${labels.errorReference(failure.reference)})`}
+              </Alert>
+            )}
+            <Field
+              id={ids.email}
+              label={idBox ? labels.signInIdentifier : labels.email}
+              required
+              error={attempt.attempted ? emailProblem : undefined}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  type={idBox ? 'text' : 'email'}
+                  {...(idBox ? { autoCapitalize: 'none', spellCheck: false } : {})}
+                  autoComplete="username"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              )}
+            </Field>
+            {mode === 'password' && (
+              <PasswordField
+                id={ids.password}
+                error={attempt.attempted ? passwordProblem : undefined}
+                label={labels.password}
+                labels={labels}
+                autoComplete="current-password"
+                value={password}
+                onChange={setPassword}
+              />
+            )}
+            {mode === 'magic' && <p className={styles.muted}>{labels.signInMagicLinkHelp}</p>}
+            <FormProblems
+              title={labels.formProblemsTitle}
+              problems={attempt.attempted ? problems : []}
+            />
+            <Button
+              type="submit"
+              loading={busy}
+              loadingLabel={labels.submitting}
+              disabled={throttled}
+            >
+              {throttled
+                ? labels.errorRetryIn(wait.seconds)
+                : mode === 'magic'
+                  ? labels.signInMagicLinkSubmit
+                  : labels.signInSubmit}
+            </Button>
+            <div className={[styles.row, styles.between].join(' ')}>
+              {mode === 'password' && forgotPasswordTo && !idLink && (
+                <Link className={styles.link} to={forgotPasswordTo}>
+                  {labels.signInForgot}
+                </Link>
+              )}
+              {mode === 'password' && idLink && (
+                <span className={styles.row}>
+                  {forgotPasswordTo && (
+                    <Link className={styles.link} to={forgotPasswordTo}>
+                      {labels.signInForgot}
+                    </Link>
+                  )}
+                  <Link className={styles.link} to={idLink}>
+                    {labels.forgotLoginIdLink}
+                  </Link>
+                </span>
+              )}
+              {hasPassword && hasMagic && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMode(mode === 'password' ? 'magic' : 'password')
+                    setFailure(null)
+                  }}
+                >
+                  {mode === 'password' ? labels.signInMagicLink : labels.signInUsePassword}
+                </Button>
+              )}
+            </div>
+          </form>
+        )}
+        {failure && !(hasPassword || hasMagic) && <Alert tone="danger">{failure.message}</Alert>}
+        {showSocial && otherMethodAbove && <div className={styles.divider}>{labels.or}</div>}
+        {showSocial && (
+          <SocialButtons
+            providers={enabled.social}
+            labels={labels}
+            disabled={socialBusy}
+            onSelect={async (provider) => {
+              setFailure(null)
+              setSocialBusy(true) // 시작이 끝나는 동안(WebCrypto) 두 번 누르지 못하게 — 페이지가 떠나면 어차피 사라진다
+              try {
+                await onSocialSignIn?.(provider)
+              } catch (error) {
+                fail(error)
+              } finally {
+                setSocialBusy(false)
+              }
+            }}
+          />
+        )}
+      </div>
+    </AuthLayout>
+  )
+}

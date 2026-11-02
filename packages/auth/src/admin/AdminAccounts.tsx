@@ -1,0 +1,95 @@
+import { Alert, PageHeader, Skeleton } from '@arcbit/ui'
+import { useCallback, useState } from 'react'
+import { authErrorMessage } from '../screens/errors'
+import { mergeLabels, type AuthLabels } from '../screens/labels'
+import { useResource } from '../screens/useResource'
+import { AccountStateNotice } from '../screens/AccountStateNotice'
+import { AdminAccountsTable, type AdminAccountsQueryState } from './AdminAccountsTable'
+import { adminBlocked } from './adminErrors'
+import type { AdminAccountsApi } from './adminApi'
+import type { RoleChoice } from './rowActions'
+
+export type AdminAccountsProps = {
+  api: AdminAccountsApi
+  assignableRoles: RoleChoice[]
+  /** 호출자의 권한 목록 - `AdminAccountsTable` 의 같은 이름 prop */
+  callerPermissions?: readonly string[]
+  /** 호출자의 권한 질문(`useCan()`) - 표의 명령을 권한으로 가린다. 기본 모두 허용 */
+  can?: (key: string) => boolean
+  pageSize?: number
+  formatDate?: (iso: string) => string
+  /** 차단 안내의 「문의」 링크 */
+  supportHref?: string
+  labels?: Partial<AuthLabels>
+}
+
+/** 운영자 계정 화면 — 목록을 불러 와 표에 잇는다. 403(ADMIN 이 아니거나 저장된 계정이 더는 활성 관리자가 아님)은 「접근 차단」 안내 — 로그아웃하지 않는다 */
+export function AdminAccounts({
+  api,
+  assignableRoles,
+  callerPermissions,
+  can,
+  pageSize = 20,
+  formatDate,
+  supportHref,
+  labels: given,
+}: AdminAccountsProps) {
+  const labels = mergeLabels(given)
+  const [query, setQuery] = useState<AdminAccountsQueryState>({ email: '', status: '' })
+  // 아이디를 켠 서버는 응답에 `loginId` 키를 싣는다. 한 번 본 뒤에는 결과가 비어도 열 · 찾기 칸을 지키지 않으면 아이디를 찾다 실패한 순간 칸이 사라진다
+  const [loginIdOn, setLoginIdOn] = useState(false)
+  const [page, setPage] = useState(0)
+  const load = useCallback(
+    () =>
+      api.list({
+        email: query.email.trim(),
+        loginId: query.loginId?.trim() || undefined,
+        status: query.status || undefined,
+        page,
+        size: pageSize,
+      }),
+    [api, query, page, pageSize],
+  )
+  const list = useResource(load)
+  const sawLoginId = list.data?.values.some((a) => a.loginId !== undefined) === true
+  if (sawLoginId && !loginIdOn) setLoginIdOn(true) // 렌더 중 같은 컴포넌트의 상태를 맞추는 정해진 방법
+  const after = (task: () => Promise<unknown>) => async () => {
+    await task()
+    list.reload()
+  }
+
+  if (adminBlocked(list.error))
+    return <AccountStateNotice kind="blocked" supportHref={supportHref} labels={given} />
+  return (
+    <div>
+      <PageHeader title={labels.adminTitle} />
+      {list.error ? (
+        <Alert tone="danger">{authErrorMessage(list.error, labels).message}</Alert>
+      ) : !list.data ? (
+        <Skeleton />
+      ) : (
+        <AdminAccountsTable
+          accounts={list.data.values}
+          pagination={list.data.pagination}
+          assignableRoles={assignableRoles}
+          can={can}
+          callerPermissions={callerPermissions}
+          query={query}
+          onQueryChange={(next) => {
+            setQuery(next)
+            setPage(0)
+          }}
+          onPage={setPage}
+          onSuspend={(id, reason) => after(() => api.suspend(id, reason))()}
+          onUnsuspend={(id) => after(() => api.unsuspend(id))()}
+          onRestore={(id) => after(() => api.restore(id))()}
+          onGrantRole={(id, role) => after(() => api.grantRole(id, role))()}
+          onRevokeRole={(id, role) => after(() => api.revokeRole(id, role))()}
+          formatDate={formatDate}
+          showLoginId={loginIdOn}
+          labels={given}
+        />
+      )}
+    </div>
+  )
+}
