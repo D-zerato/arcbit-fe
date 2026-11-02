@@ -3,48 +3,59 @@
 /* primitive — screen CSS never uses these directly; semantic tokens reference them (dark steps included) */
 :root {
   --p-neutral-0: #ffffff;
-  --p-neutral-50: #fbfcfb;
-  --p-neutral-100: #f5f7f6;
-  --p-neutral-150: #eff4f1;
-  --p-neutral-200: #eef2f0;
-  --p-neutral-250: #e7ece9;
-  --p-neutral-300: #d8dfda;
-  --p-neutral-400: #b9c4bd;
-  --p-neutral-500: #9aa6a0;
-  --p-neutral-600: #69706c;
-  --p-neutral-800: #2a2d2b;
-  --p-neutral-850: #17201c;
-  --p-neutral-900: #111413;
-  --p-night-400: #3d4a44;
-  --p-night-500: #2b3631;
-  --p-night-600: #212b27;
-  --p-night-700: #1d2622;
-  --p-night-800: #161d1a;
-  --p-night-850: #131a17;
-  --p-night-900: #0f1412;
-  --p-night-950: #0b100e;
-  --p-teal-100: #dff5f0;
-  --p-teal-300: #5cd6c6;
-  --p-teal-700: #0f766e;
-  --p-teal-900: #12332f;
-  --p-amber-100: #fff0d5;
-  --p-amber-300: #e0a24a;
-  --p-amber-700: #975c0f;
-  --p-amber-900: #3a2b12;
-  --p-red-100: #ffe2de;
-  --p-red-200: #f5b5ad;
-  --p-red-300: #f08a7e;
-  --p-red-700: #b33b2e;
-  --p-red-800: #7a3a33;
-  --p-red-900: #3d1f1b;
-  --p-alpha-white-92: rgba(255, 255, 255, 0.92);
-  --p-alpha-night-88: rgba(15, 20, 18, 0.88);
-  --p-alpha-teal-8: rgba(15, 118, 110, 0.08);
-  --p-alpha-teal-10: rgba(92, 214, 198, 0.1);
-  --p-shadow-raised-light: 0 18px 45px rgba(36, 47, 43, 0.08);
-  --p-shadow-raised-dark: 0 18px 45px rgba(0, 0, 0, 0.45);
-  --p-font-family-sans: 'Avenir Next', 'IBM Plex Sans KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif;
-  --p-font-family-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace;
+  --p-neutral-50: #f9fafc;
+  --p-neutral-100: #f4f5f8;
+  --p-neutral-150: #eceef3;
+  --p-neutral-200: #eceef3;
+  --p-neutral-250: #e2e5ec;
+  --p-neutral-300: #dfe2e9;
+  --p-neutral-400: #8a92a2;
+  --p-neutral-500: #9ba2b2;
+  --p-neutral-600: #555c6b;
+  --p-neutral-800: #1d2030;
+  --p-neutral-850: #10121a;
+  --p-neutral-900: #10121a;
+  --p-night-400: #5c6475;
+  --p-night-500: #272b35;
+  --p-night-600: #242833;
+  --p-night-700: #1b1e26;
+  --p-night-800: #13151b;
+  --p-night-850: #101218;
+  --p-night-900: #0a0b0f;
+  --p-night-950: #07080b;
+  --p-teal-100: #eaecf8;
+  --p-teal-300: #8b97d6;
+  --p-teal-700: #3b4fc4;
+  --p-teal-900: #1e2236;
+  --p-amber-100: #fbefd9;
+  --p-amber-300: #f0b44c;
+  --p-amber-700: #875600;
+  --p-amber-900: #33270f;
+  --p-red-100: #fde4e4;
+  --p-red-200: #f2b3b3;
+  --p-red-300: #ff7070;
+  --p-red-700: #b42a2a;
+  --p-red-800: #6e3036;
+  --p-red-900: #3a1c1e;
+  --p-alpha-white-92: rgba(255, 255, 255, 0.72);
+  --p-alpha-night-88: rgba(19, 21, 27, 0.7);
+  --p-alpha-teal-8: rgba(59, 79, 196, 0.08);
+  --p-alpha-teal-10: rgba(139, 151, 214, 0.1);
+  --p-alpha-glass-light: rgba(255, 255, 255, 0.68);
+  --p-alpha-glass-dark: rgba(19, 21, 27, 0.66);
+  --p-alpha-glass-strong-light: rgba(255, 255, 255, 0.88);
+  --p-alpha-glass-strong-dark: rgba(19, 21, 27, 0.88);
+  --p-holo-blue-light: #a9b8ff;
+  --p-holo-mint-light: #a6ecd9;
+  --p-holo-pink-light: #f0c2f4;
+  --p-holo-blue-dark: #7f92ff;
+  --p-holo-mint-dark: #6fd8bf;
+  --p-holo-pink-dark: #d79be0;
+  --p-shadow-raised-light: 0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08);
+  --p-shadow-raised-dark: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --p-font-family-sans: 'Noto Sans KR', 'Geist', 'Apple SD Gothic Neo', ui-sans-serif, system-ui, sans-serif;
+  --p-font-family-mono: 'Geist Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace;
+  --p-font-family-display: 'Geist', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif;
   --p-space-1: 4px;
   --p-space-2: 8px;
   --p-space-3: 12px;
@@ -52,16 +63,17 @@
   --p-space-5: 20px;
   --p-space-6: 24px;
   --p-space-8: 32px;
-  --p-radius-1: 4px;
-  --p-radius-2: 6px;
-  --p-radius-3: 8px;
+  --p-radius-1: 8px;
+  --p-radius-2: 12px;
+  --p-radius-3: 20px;
+  --p-radius-4: 28px;
   --p-radius-full: 9999px;
   --p-font-size-1: 12px;
-  --p-font-size-2: 13px;
-  --p-font-size-3: 15px;
-  --p-font-size-4: 16px;
-  --p-font-size-5: 20px;
-  --p-font-size-6: 28px;
+  --p-font-size-2: 14px;
+  --p-font-size-3: 16px;
+  --p-font-size-4: 19px;
+  --p-font-size-5: 24px;
+  --p-font-size-6: 32px;
   --p-line-height-tight: 1.2;
   --p-line-height-snug: 1.35;
   --p-line-height-normal: 1.5;
@@ -78,8 +90,8 @@
   --bg: var(--p-neutral-100);
   --surface: var(--p-neutral-0);
   --surface-alt: var(--p-neutral-50);
-  --surface-muted: var(--p-neutral-200);
-  --surface-sunken: var(--p-neutral-150);
+  --surface-muted: var(--p-neutral-150);
+  --surface-sunken: var(--p-neutral-250);
   --code-bg: var(--p-neutral-250);
   --header-bg: var(--p-alpha-white-92);
   --inverse: var(--p-neutral-850);
@@ -110,6 +122,7 @@
   /* Font */
   --sans: var(--p-font-family-sans);
   --mono: var(--p-font-family-mono);
+  --display: var(--p-font-family-display);
 
   /* Spacing */
   --space-xs: var(--p-space-1);
@@ -125,6 +138,7 @@
   --radius-md: var(--p-radius-2);
   --radius-lg: var(--p-radius-3);
   --radius-full: var(--p-radius-full);
+  --radius-xl: var(--p-radius-4);
 
   /* Type scale */
   --font-size-caption: var(--p-font-size-1);
@@ -136,6 +150,13 @@
   --line-height-tight: var(--p-line-height-tight);
   --line-height-snug: var(--p-line-height-snug);
   --line-height-normal: var(--p-line-height-normal);
+
+  /* 홀로 글라스 */
+  --holo-1: var(--p-holo-blue-light);
+  --holo-2: var(--p-holo-mint-light);
+  --holo-3: var(--p-holo-pink-light);
+  --glass: var(--p-alpha-glass-light);
+  --glass-strong: var(--p-alpha-glass-strong-light);
 }
 
 /* dark — data-theme="dark" (on <html> or any container) */
@@ -174,6 +195,13 @@
 
   /* Effect */
   --shadow: var(--p-shadow-raised-dark);
+
+  /* 홀로 글라스 */
+  --holo-1: var(--p-holo-blue-dark);
+  --holo-2: var(--p-holo-mint-dark);
+  --holo-3: var(--p-holo-pink-dark);
+  --glass: var(--p-alpha-glass-dark);
+  --glass-strong: var(--p-alpha-glass-strong-dark);
 }
 
 /* system — data-theme absent or "system" follows the OS (no reload, CSS only). Same values as the dark block above */
@@ -213,5 +241,12 @@
 
     /* Effect */
     --shadow: var(--p-shadow-raised-dark);
+
+    /* 홀로 글라스 */
+    --holo-1: var(--p-holo-blue-dark);
+    --holo-2: var(--p-holo-mint-dark);
+    --holo-3: var(--p-holo-pink-dark);
+    --glass: var(--p-alpha-glass-dark);
+    --glass-strong: var(--p-alpha-glass-strong-dark);
   }
 }

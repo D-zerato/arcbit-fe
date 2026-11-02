@@ -89,30 +89,30 @@ pnpm tokens:check   # 쓰지 않고 비교 — 생성물이 어긋났으면 종�
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--bg` | `#f5f7f6` | `#0f1412` | `--p-neutral-100` · dark `--p-night-900` | 화면 바탕 |
-| `--surface` | `#ffffff` | `#161d1a` | `--p-neutral-0` · dark `--p-night-800` | 카드 · 입력칸 바탕 |
-| `--surface-alt` | `#fbfcfb` | `#131a17` | `--p-neutral-50` · dark `--p-night-850` | 카드 안 옅은 바탕(스트림 · 모듈 · 교환 항목) |
-| `--surface-muted` | `#eef2f0` | `#1d2622` | `--p-neutral-200` · dark `--p-night-700` | 옅은 면 |
-| `--surface-sunken` | `#eff4f1` | `#0b100e` | `--p-neutral-150` · dark `--p-night-950` | 움푹한 블록 바탕(JSON · 로그) |
-| `--code-bg` | `#e7ece9` | `#212b27` | `--p-neutral-250` · dark `--p-night-600` | code · 알약 바탕 |
-| `--header-bg` | `rgba(255, 255, 255, 0.92)` | `rgba(15, 20, 18, 0.88)` | `--p-alpha-white-92` · dark `--p-alpha-night-88` | 고정 헤더 바탕(반투명) |
-| `--inverse` | `#17201c` | `#e7ece9` | `--p-neutral-850` · dark `--p-neutral-250` | 반전 면 — 눌리는 검정 버튼 · 브랜드 마크 |
+| `--bg` | `#f4f5f8` | `#0a0b0f` | `--p-neutral-100` · dark `--p-night-900` | 화면 바탕 |
+| `--surface` | `#ffffff` | `#13151b` | `--p-neutral-0` · dark `--p-night-800` | 카드 · 입력칸 바탕 |
+| `--surface-alt` | `#f9fafc` | `#101218` | `--p-neutral-50` · dark `--p-night-850` | 카드 안 옅은 바탕(스트림 · 모듈 · 교환 항목) |
+| `--surface-muted` | `#eceef3` | `#1b1e26` | `--p-neutral-150` · dark `--p-night-700` | 옅은 면 |
+| `--surface-sunken` | `#e2e5ec` | `#07080b` | `--p-neutral-250` · dark `--p-night-950` | 움푹한 블록 바탕(JSON · 로그) |
+| `--code-bg` | `#e2e5ec` | `#242833` | `--p-neutral-250` · dark `--p-night-600` | code · 알약 바탕 |
+| `--header-bg` | `rgba(255, 255, 255, 0.72)` | `rgba(19, 21, 27, 0.7)` | `--p-alpha-white-92` · dark `--p-alpha-night-88` | 고정 헤더 바탕(반투명) |
+| `--inverse` | `#10121a` | `#e2e5ec` | `--p-neutral-850` · dark `--p-neutral-250` | 반전 면 — 눌리는 검정 버튼 · 브랜드 마크 |
 
 ### Text
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--text` | `#2a2d2b` | `#d8dfda` | `--p-neutral-800` · dark `--p-neutral-300` | 본문 글자 |
-| `--text-muted` | `#69706c` | `#9aa6a0` | `--p-neutral-600` · dark `--p-neutral-500` | 보조 글자 |
-| `--text-strong` | `#111413` | `#f5f7f6` | `--p-neutral-900` · dark `--p-neutral-100` | 제목 · 강조 글자 |
-| `--on-inverse` | `#ffffff` | `#111413` | `--p-neutral-0` · dark `--p-neutral-900` | 반전 면(--inverse)과 강조색(--teal) 바탕 위 글자 |
+| `--text` | `#1d2030` | `#dfe2e9` | `--p-neutral-800` · dark `--p-neutral-300` | 본문 글자 |
+| `--text-muted` | `#555c6b` | `#9ba2b2` | `--p-neutral-600` · dark `--p-neutral-500` | 보조 글자 |
+| `--text-strong` | `#10121a` | `#f4f5f8` | `--p-neutral-900` · dark `--p-neutral-100` | 제목 · 강조 글자 |
+| `--on-inverse` | `#ffffff` | `#10121a` | `--p-neutral-0` · dark `--p-neutral-900` | 반전 면(--inverse)과 강조색(--teal) 바탕 위 글자 |
 
 ### Border
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--border` | `#d8dfda` | `#2b3631` | `--p-neutral-300` · dark `--p-night-500` | 옅은 선 |
-| `--border-strong` | `#b9c4bd` | `#3d4a44` | `--p-neutral-400` · dark `--p-night-400` | 진한 선 · 입력 · 빈 칸 점선 |
+| `--border` | `#dfe2e9` | `#272b35` | `--p-neutral-300` · dark `--p-night-500` | 옅은 선 |
+| `--border-strong` | `#8a92a2` | `#5c6475` | `--p-neutral-400` · dark `--p-night-400` | 진한 선 · 입력 · 빈 칸 점선 |
 
 선은 장식이라 대비 검사 대상이 아니다. 입력칸 경계처럼 반드시 보여야 하는 곳이 생기면 tests/contrast.test.ts 에 짝을 더한다.
 
@@ -120,27 +120,28 @@ pnpm tokens:check   # 쓰지 않고 비교 — 생성물이 어긋났으면 종�
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--teal` | `#0f766e` | `#5cd6c6` | `--p-teal-700` · dark `--p-teal-300` | 강조 · 성공 · 포커스 |
-| `--teal-soft` | `#dff5f0` | `#12332f` | `--p-teal-100` · dark `--p-teal-900` | 강조 알약 바탕 · 포커스 윤곽 |
-| `--teal-wash` | `rgba(15, 118, 110, 0.08)` | `rgba(92, 214, 198, 0.1)` | `--p-alpha-teal-8` · dark `--p-alpha-teal-10` | 강조 번짐(그라디언트 시작) |
-| `--amber` | `#975c0f` | `#e0a24a` | `--p-amber-700` · dark `--p-amber-300` | 경고 · 연결 중 |
-| `--amber-soft` | `#fff0d5` | `#3a2b12` | `--p-amber-100` · dark `--p-amber-900` | 경고 알약 바탕 |
-| `--red` | `#b33b2e` | `#f08a7e` | `--p-red-700` · dark `--p-red-300` | 오류 |
-| `--red-soft` | `#ffe2de` | `#3d1f1b` | `--p-red-100` · dark `--p-red-900` | 오류 알약 · 상자 바탕 |
-| `--red-border` | `#f5b5ad` | `#7a3a33` | `--p-red-200` · dark `--p-red-800` | 오류 상자 테두리 |
+| `--teal` | `#3b4fc4` | `#8b97d6` | `--p-teal-700` · dark `--p-teal-300` | 강조 · 성공 · 포커스 |
+| `--teal-soft` | `#eaecf8` | `#1e2236` | `--p-teal-100` · dark `--p-teal-900` | 강조 알약 바탕 · 포커스 윤곽 |
+| `--teal-wash` | `rgba(59, 79, 196, 0.08)` | `rgba(139, 151, 214, 0.1)` | `--p-alpha-teal-8` · dark `--p-alpha-teal-10` | 강조 번짐(그라디언트 시작) |
+| `--amber` | `#875600` | `#f0b44c` | `--p-amber-700` · dark `--p-amber-300` | 경고 · 연결 중 |
+| `--amber-soft` | `#fbefd9` | `#33270f` | `--p-amber-100` · dark `--p-amber-900` | 경고 알약 바탕 |
+| `--red` | `#b42a2a` | `#ff7070` | `--p-red-700` · dark `--p-red-300` | 오류 |
+| `--red-soft` | `#fde4e4` | `#3a1c1e` | `--p-red-100` · dark `--p-red-900` | 오류 알약 · 상자 바탕 |
+| `--red-border` | `#f2b3b3` | `#6e3036` | `--p-red-200` · dark `--p-red-800` | 오류 상자 테두리 |
 
 ### Effect
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--shadow` | `0 18px 45px rgba(36, 47, 43, 0.08)` | `0 18px 45px rgba(0, 0, 0, 0.45)` | `--p-shadow-raised-light` · dark `--p-shadow-raised-dark` | 떠 있는 면 그림자 |
+| `--shadow` | `0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08)` | `0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35)` | `--p-shadow-raised-light` · dark `--p-shadow-raised-dark` | 떠 있는 면 그림자 |
 
 ### Font
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--sans` | `'Avenir Next', 'IBM Plex Sans KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif` | = | `--p-font-family-sans` | 본문 서체 |
-| `--mono` | `'JetBrains Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace` | = | `--p-font-family-mono` | 고정폭 서체 |
+| `--sans` | `'Noto Sans KR', 'Geist', 'Apple SD Gothic Neo', ui-sans-serif, system-ui, sans-serif` | = | `--p-font-family-sans` | 본문 서체 |
+| `--mono` | `'Geist Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace` | = | `--p-font-family-mono` | 고정폭 서체 |
+| `--display` | `'Geist', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif` | = | `--p-font-family-display` |  |
 
 ### Spacing
 
@@ -160,10 +161,11 @@ pnpm tokens:check   # 쓰지 않고 비교 — 생성물이 어긋났으면 종�
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--radius-sm` | `4px` | = | `--p-radius-1` | code · 오류 상자 |
-| `--radius-md` | `6px` | = | `--p-radius-2` | 입력 · 버튼 · 카드 · 대화상자 |
-| `--radius-lg` | `8px` | = | `--p-radius-3` | 큰 면 · 팝오버 |
+| `--radius-sm` | `8px` | = | `--p-radius-1` | code · 오류 상자 |
+| `--radius-md` | `12px` | = | `--p-radius-2` | 입력 · 버튼 · 카드 · 대화상자 |
+| `--radius-lg` | `20px` | = | `--p-radius-3` | 큰 면 · 팝오버 |
 | `--radius-full` | `9999px` | = | `--p-radius-full` | 알약 · 스피너 · 스위치 |
+| `--radius-xl` | `28px` | = | `--p-radius-4` |  |
 
 모서리 둥글기.
 
@@ -172,16 +174,28 @@ pnpm tokens:check   # 쓰지 않고 비교 — 생성물이 어긋났으면 종�
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
 | `--font-size-caption` | `12px` | = | `--p-font-size-1` | 캡션 · 도움말 · 라벨 |
-| `--font-size-small` | `13px` | = | `--p-font-size-2` | 작은 버튼 · 보조 글 |
-| `--font-size-body` | `15px` | = | `--p-font-size-3` | 본문(기본) |
-| `--font-size-subheading` | `16px` | = | `--p-font-size-4` | h3 |
-| `--font-size-heading` | `20px` | = | `--p-font-size-5` | h2 |
-| `--font-size-title` | `28px` | = | `--p-font-size-6` | h1 |
+| `--font-size-small` | `14px` | = | `--p-font-size-2` | 작은 버튼 · 보조 글 |
+| `--font-size-body` | `16px` | = | `--p-font-size-3` | 본문(기본) |
+| `--font-size-subheading` | `19px` | = | `--p-font-size-4` | h3 |
+| `--font-size-heading` | `24px` | = | `--p-font-size-5` | h2 |
+| `--font-size-title` | `32px` | = | `--p-font-size-6` | h1 |
 | `--line-height-tight` | `1.2` | = | `--p-line-height-tight` | 제목 |
 | `--line-height-snug` | `1.35` | = | `--p-line-height-snug` | code · pre |
 | `--line-height-normal` | `1.5` | = | `--p-line-height-normal` | 본문 |
 
 역할 이름 — 글자 크기와 줄 높이. 서체 두께는 이 스켈레톤이 토큰으로 정하지 않는다(컴포넌트 CSS 에 있다).
+
+### 홀로 글라스
+
+| token | light | dark | reference | purpose |
+|---|---|---|---|---|
+| `--holo-1` | `#a9b8ff` | `#7f92ff` | `--p-holo-blue-light` · dark `--p-holo-blue-dark` |  |
+| `--holo-2` | `#a6ecd9` | `#6fd8bf` | `--p-holo-mint-light` · dark `--p-holo-mint-dark` |  |
+| `--holo-3` | `#f0c2f4` | `#d79be0` | `--p-holo-pink-light` · dark `--p-holo-pink-dark` |  |
+| `--glass` | `rgba(255, 255, 255, 0.68)` | `rgba(19, 21, 27, 0.66)` | `--p-alpha-glass-light` · dark `--p-alpha-glass-dark` |  |
+| `--glass-strong` | `rgba(255, 255, 255, 0.88)` | `rgba(19, 21, 27, 0.88)` | `--p-alpha-glass-strong-light` · dark `--p-alpha-glass-strong-dark` |  |
+
+홀로 글라스 — 반투명 유리 면과 무지개빛 테두리. holo-1·2·3 은 항상 셋을 함께 그라디언트로, 테두리·배지·막대에만.
 
 ### Primitive palette (`--p-*`)
 
@@ -189,49 +203,60 @@ Values the semantic tokens reference. Never use these directly in screen CSS or 
 
 | token | value | description |
 |---|---|---|
-| `--p-neutral-0` | `#ffffff` | 순백 — 카드 · 입력칸 바탕, 반전 글자 |
-| `--p-neutral-50` | `#fbfcfb` | 카드 안 옅은 바탕 |
-| `--p-neutral-100` | `#f5f7f6` | 화면 바탕 / 다크의 강한 글자 |
-| `--p-neutral-150` | `#eff4f1` | JSON · 로그 블록 바탕 |
-| `--p-neutral-200` | `#eef2f0` | 옅은 면 |
-| `--p-neutral-250` | `#e7ece9` | code · 알약 바탕 / 다크의 반전 바탕 |
-| `--p-neutral-300` | `#d8dfda` | 옅은 선 / 다크의 본문 글자 |
-| `--p-neutral-400` | `#b9c4bd` | 진한 선 |
-| `--p-neutral-500` | `#9aa6a0` | 다크의 보조 글자 |
-| `--p-neutral-600` | `#69706c` | 보조 글자 |
-| `--p-neutral-800` | `#2a2d2b` | 본문 글자 |
-| `--p-neutral-850` | `#17201c` | 반전 바탕(검정 버튼 · 브랜드 마크) |
-| `--p-neutral-900` | `#111413` | 강한 글자 / 다크의 반전 글자 |
-| `--p-night-400` | `#3d4a44` | 진한 선 |
-| `--p-night-500` | `#2b3631` | 옅은 선 |
-| `--p-night-600` | `#212b27` | code 바탕 |
-| `--p-night-700` | `#1d2622` | 옅은 면 |
-| `--p-night-800` | `#161d1a` | 다크 카드 · 입력칸 바탕 |
-| `--p-night-850` | `#131a17` | 카드 안 바탕 |
-| `--p-night-900` | `#0f1412` | 다크 화면 바탕 |
-| `--p-night-950` | `#0b100e` | 가장 어두운 면 |
-| `--p-teal-100` | `#dff5f0` | 옅은 강조 바탕 |
-| `--p-teal-300` | `#5cd6c6` | 다크 강조 |
-| `--p-teal-700` | `#0f766e` | 강조 |
-| `--p-teal-900` | `#12332f` | 다크 옅은 강조 바탕 |
-| `--p-amber-100` | `#fff0d5` | 옅은 경고 바탕 |
-| `--p-amber-300` | `#e0a24a` | 다크 경고 |
-| `--p-amber-700` | `#975c0f` | 경고 — 옛 #a86612 는 amber-soft · code 위 AA 미달이라 한 단계 어둡게 |
-| `--p-amber-900` | `#3a2b12` | 다크 옅은 경고 바탕 |
-| `--p-red-100` | `#ffe2de` | 옅은 오류 바탕 |
-| `--p-red-200` | `#f5b5ad` | 오류 상자 테두리 |
-| `--p-red-300` | `#f08a7e` | 다크 오류 |
-| `--p-red-700` | `#b33b2e` | 오류 |
-| `--p-red-800` | `#7a3a33` | 다크 오류 상자 테두리 |
-| `--p-red-900` | `#3d1f1b` | 다크 옅은 오류 바탕 |
-| `--p-alpha-white-92` | `rgba(255, 255, 255, 0.92)` | 라이트 헤더 바탕 |
-| `--p-alpha-night-88` | `rgba(15, 20, 18, 0.88)` | 다크 헤더 바탕 |
-| `--p-alpha-teal-8` | `rgba(15, 118, 110, 0.08)` | 라이트 강조 번짐 |
-| `--p-alpha-teal-10` | `rgba(92, 214, 198, 0.1)` | 다크 강조 번짐 |
-| `--p-shadow-raised-light` | `0 18px 45px rgba(36, 47, 43, 0.08)` | 라이트 떠 있는 면 |
-| `--p-shadow-raised-dark` | `0 18px 45px rgba(0, 0, 0, 0.45)` | 다크 떠 있는 면 |
-| `--p-font-family-sans` | `'Avenir Next', 'IBM Plex Sans KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif` | 본문 서체 |
-| `--p-font-family-mono` | `'JetBrains Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace` | 고정폭 서체 |
+| `--p-neutral-0` | `#ffffff` |  |
+| `--p-neutral-50` | `#f9fafc` |  |
+| `--p-neutral-100` | `#f4f5f8` |  |
+| `--p-neutral-150` | `#eceef3` |  |
+| `--p-neutral-200` | `#eceef3` |  |
+| `--p-neutral-250` | `#e2e5ec` |  |
+| `--p-neutral-300` | `#dfe2e9` |  |
+| `--p-neutral-400` | `#8a92a2` |  |
+| `--p-neutral-500` | `#9ba2b2` |  |
+| `--p-neutral-600` | `#555c6b` |  |
+| `--p-neutral-800` | `#1d2030` |  |
+| `--p-neutral-850` | `#10121a` |  |
+| `--p-neutral-900` | `#10121a` |  |
+| `--p-night-400` | `#5c6475` |  |
+| `--p-night-500` | `#272b35` |  |
+| `--p-night-600` | `#242833` |  |
+| `--p-night-700` | `#1b1e26` |  |
+| `--p-night-800` | `#13151b` |  |
+| `--p-night-850` | `#101218` |  |
+| `--p-night-900` | `#0a0b0f` |  |
+| `--p-night-950` | `#07080b` |  |
+| `--p-teal-100` | `#eaecf8` |  |
+| `--p-teal-300` | `#8b97d6` |  |
+| `--p-teal-700` | `#3b4fc4` |  |
+| `--p-teal-900` | `#1e2236` |  |
+| `--p-amber-100` | `#fbefd9` |  |
+| `--p-amber-300` | `#f0b44c` |  |
+| `--p-amber-700` | `#875600` |  |
+| `--p-amber-900` | `#33270f` |  |
+| `--p-red-100` | `#fde4e4` |  |
+| `--p-red-200` | `#f2b3b3` |  |
+| `--p-red-300` | `#ff7070` |  |
+| `--p-red-700` | `#b42a2a` |  |
+| `--p-red-800` | `#6e3036` |  |
+| `--p-red-900` | `#3a1c1e` |  |
+| `--p-alpha-white-92` | `rgba(255, 255, 255, 0.72)` |  |
+| `--p-alpha-night-88` | `rgba(19, 21, 27, 0.7)` |  |
+| `--p-alpha-teal-8` | `rgba(59, 79, 196, 0.08)` |  |
+| `--p-alpha-teal-10` | `rgba(139, 151, 214, 0.1)` |  |
+| `--p-alpha-glass-light` | `rgba(255, 255, 255, 0.68)` |  |
+| `--p-alpha-glass-dark` | `rgba(19, 21, 27, 0.66)` |  |
+| `--p-alpha-glass-strong-light` | `rgba(255, 255, 255, 0.88)` |  |
+| `--p-alpha-glass-strong-dark` | `rgba(19, 21, 27, 0.88)` |  |
+| `--p-holo-blue-light` | `#a9b8ff` |  |
+| `--p-holo-mint-light` | `#a6ecd9` |  |
+| `--p-holo-pink-light` | `#f0c2f4` |  |
+| `--p-holo-blue-dark` | `#7f92ff` |  |
+| `--p-holo-mint-dark` | `#6fd8bf` |  |
+| `--p-holo-pink-dark` | `#d79be0` |  |
+| `--p-shadow-raised-light` | `0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08)` | 라이트 떠 있는 면 |
+| `--p-shadow-raised-dark` | `0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35)` | 다크 떠 있는 면 |
+| `--p-font-family-sans` | `'Noto Sans KR', 'Geist', 'Apple SD Gothic Neo', ui-sans-serif, system-ui, sans-serif` | 본문 서체 |
+| `--p-font-family-mono` | `'Geist Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace` | 고정폭 서체 |
+| `--p-font-family-display` | `'Geist', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif` |  |
 | `--p-space-1` | `4px` | 촘촘한 간격 |
 | `--p-space-2` | `8px` | 기본 작은 간격 |
 | `--p-space-3` | `12px` | 기본 간격 |
@@ -239,16 +264,17 @@ Values the semantic tokens reference. Never use these directly in screen CSS or 
 | `--p-space-5` | `20px` | 카드 안쪽 여백 |
 | `--p-space-6` | `24px` | 화면 여백 |
 | `--p-space-8` | `32px` | 큰 구획 |
-| `--p-radius-1` | `4px` | 작은 조각(code · 오류 상자) |
-| `--p-radius-2` | `6px` | 입력 · 버튼 · 카드 |
-| `--p-radius-3` | `8px` | 큰 면 · 팝오버 |
+| `--p-radius-1` | `8px` | 작은 조각(code · 오류 상자) |
+| `--p-radius-2` | `12px` | 입력 · 버튼 · 카드 |
+| `--p-radius-3` | `20px` | 큰 면 · 팝오버 |
+| `--p-radius-4` | `28px` |  |
 | `--p-radius-full` | `9999px` | 알약 · 원 — 어떤 크기에서도 끝이 둥글다 |
 | `--p-font-size-1` | `12px` | 캡션 · 도움말 |
-| `--p-font-size-2` | `13px` | 작은 글자 |
-| `--p-font-size-3` | `15px` | 본문 |
-| `--p-font-size-4` | `16px` | 소제목 |
-| `--p-font-size-5` | `20px` | 제목 |
-| `--p-font-size-6` | `28px` | 큰 제목 |
+| `--p-font-size-2` | `14px` | 작은 글자 |
+| `--p-font-size-3` | `16px` | 본문 |
+| `--p-font-size-4` | `19px` | 소제목 |
+| `--p-font-size-5` | `24px` | 제목 |
+| `--p-font-size-6` | `32px` | 큰 제목 |
 | `--p-line-height-tight` | `1.2` | 제목 |
 | `--p-line-height-snug` | `1.35` | 코드 · 촘촘한 글 |
 | `--p-line-height-normal` | `1.5` | 본문 |

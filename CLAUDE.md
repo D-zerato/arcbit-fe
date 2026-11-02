@@ -1,5 +1,9 @@
 # arcbit-fe — Claude Code 컨텍스트
 
+> **Arcbit 규칙은 `AGENTS.md` 를 먼저 읽는다** — 층(핵심 `packages/*` 수정 금지) · 도구 추가 순서 · 도구 경계 · 디자인. 아래는 react-skeleton 공통 규칙이다.
+
+@AGENTS.md
+
 react-skeleton 에서 찍어 낸 pnpm 워크스페이스(React + TypeScript + Vite). 앱 `apps/arcbit-fe`, 패키지 8개(스코프 `@arcbit`).
 
 ## 만들기 전에 — 기능 카탈로그부터 (에이전트 필독)

@@ -1,0 +1,29 @@
+/*
+ * 앱 전역 CSS (앱에 하나뿐) — 바탕 오로라 빛만 둔다. 부품 모양은 CSS Modules 로.
+ */
+body {
+  background:
+    radial-gradient(
+      40% 50% at 8% 0%,
+      color-mix(in srgb, var(--holo-1) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      35% 45% at 100% 30%,
+      color-mix(in srgb, var(--holo-3) 18%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      45% 40% at 50% 100%,
+      color-mix(in srgb, var(--holo-2) 18%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+}

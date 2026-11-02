@@ -1,0 +1,14 @@
+.page {
+  display: grid;
+  gap: var(--space-2xl);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.section > h2 {
+  margin: 0;
+  font-size: var(--font-size-heading);
+}

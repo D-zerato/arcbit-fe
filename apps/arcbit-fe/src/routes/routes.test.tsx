@@ -18,7 +18,14 @@ describe('routes', () => {
     expect(leaf('/verify-email')?.path).toBe('/verify-email')
     expect(leaf('/reset-password')?.path).toBe('/reset-password')
     expect(leaf('/account')?.path).toBe('/account')
-    expect(leaf('/definitely/not/here')?.path).toBe('*')
+    expect(leaf('/definitely/not/here/at-all')?.path).toBe('*')
+  })
+
+  it('카탈로그 3단 주소는 카테고리 · 세부 카테고리 · 도구 페이지로 간다(없는 id 는 그 페이지가 404 를 그린다)', () => {
+    expect(leaf('/game')?.path).toBe('/:categoryId')
+    expect(leaf('/game/animo')?.path).toBe('/:categoryId/:subcategoryId')
+    expect(leaf('/game/animo/gender-type')?.path).toBe('/:categoryId/:subcategoryId/:toolId')
+    expect(leaf('/legal/terms')?.path).toBe('/legal/:type')
   })
 
   it('/account sits under the auth guard, / and /login do not', () => {

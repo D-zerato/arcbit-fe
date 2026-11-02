@@ -80,33 +80,32 @@ describe('tokens.json format (W3C Design Tokens draft)', () => {
   })
 })
 
-describe('light theme keeps the look the app had before tokens (names and values)', () => {
-  // 토큰 정본으로 옮기기 전 index.css `:root` 의 18개. 값은 옛 글자 그대로.
-  // 예외 하나: --amber 는 #a86612 → #975c0f (옛 값은 amber-soft · code-bg 위에서 AA 4.5:1 미달 — contrast.test.ts)
-  const LEGACY: Record<string, string> = {
-    '--bg': '#f5f7f6',
+describe('light theme keeps the Arcbit look (names and values)', () => {
+  // Arcbit 디자인 시스템(홀로 글라스)의 화이트 테마 값. 바꿀 때는 tokens.json 과 함께 고친다.
+  const ARCBIT: Record<string, string> = {
+    '--bg': '#f4f5f8',
     '--surface': '#ffffff',
-    '--surface-muted': '#eef2f0',
-    '--text': '#2a2d2b',
-    '--text-muted': '#69706c',
-    '--text-strong': '#111413',
-    '--border': '#d8dfda',
-    '--border-strong': '#b9c4bd',
-    '--code-bg': '#e7ece9',
-    '--teal': '#0f766e',
-    '--teal-soft': '#dff5f0',
-    '--amber': '#975c0f',
-    '--amber-soft': '#fff0d5',
-    '--red': '#b33b2e',
-    '--red-soft': '#ffe2de',
-    '--shadow': '0 18px 45px rgba(36, 47, 43, 0.08)',
+    '--surface-muted': '#eceef3',
+    '--text': '#1d2030',
+    '--text-muted': '#555c6b',
+    '--text-strong': '#10121a',
+    '--border': '#dfe2e9',
+    '--border-strong': '#8a92a2',
+    '--code-bg': '#e2e5ec',
+    '--teal': '#3b4fc4',
+    '--teal-soft': '#eaecf8',
+    '--amber': '#875600',
+    '--amber-soft': '#fbefd9',
+    '--red': '#b42a2a',
+    '--red-soft': '#fde4e4',
+    '--shadow': '0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08)',
     '--sans':
-      "'Avenir Next', 'IBM Plex Sans KR', 'Noto Sans KR', ui-sans-serif, system-ui, sans-serif",
-    '--mono': "'JetBrains Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace",
+      "'Noto Sans KR', 'Geist', 'Apple SD Gothic Neo', ui-sans-serif, system-ui, sans-serif",
+    '--mono': "'Geist Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace",
   }
   const light = themeVars(out.css, 'light')
 
-  it.each(Object.entries(LEGACY))('%s', (name, value) => {
+  it.each(Object.entries(ARCBIT))('%s', (name, value) => {
     expect(expandVars(light, light.get(name) ?? `missing ${name}`)).toBe(value)
   })
 })
@@ -183,17 +182,19 @@ describe('spacing, radius and type scales (primitive → semantic)', () => {
     expect(light.get('--space-md')).toBe('var(--p-space-3)')
   })
 
-  it('radius has sm / md / lg and a pill that stays round on any size', () => {
+  it('radius has sm / md / lg / xl and a pill that stays round on any size', () => {
     expect(semanticNames('radius')).toEqual([
       '--radius-sm',
       '--radius-md',
       '--radius-lg',
       '--radius-full',
+      '--radius-xl',
     ])
-    expect(['--radius-sm', '--radius-md', '--radius-lg'].map(resolved)).toEqual([
-      '4px',
-      '6px',
+    expect(['--radius-sm', '--radius-md', '--radius-lg', '--radius-xl'].map(resolved)).toEqual([
       '8px',
+      '12px',
+      '20px',
+      '28px',
     ])
     expect(resolved('--radius-full')).toBe('9999px')
   })
@@ -210,8 +211,8 @@ describe('spacing, radius and type scales (primitive → semantic)', () => {
       '--line-height-snug',
       '--line-height-normal',
     ])
-    expect(resolved('--font-size-body')).toBe('15px')
-    expect(resolved('--font-size-title')).toBe('28px')
+    expect(resolved('--font-size-body')).toBe('16px')
+    expect(resolved('--font-size-title')).toBe('32px')
     expect(resolved('--line-height-normal')).toBe('1.5')
   })
 

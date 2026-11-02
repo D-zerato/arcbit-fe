@@ -1,21 +1,28 @@
 import { useAuth } from '@arcbit/auth'
 import { ThemeToggle } from '@arcbit/theme'
 import { AppShell, Button } from '@arcbit/ui'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
+import { allCategories } from '../catalog/registry'
+import styles from './RootLayout.module.css'
 
 export function RootLayout() {
   const { status, logout } = useAuth()
   return (
     <AppShell
       brand={
-        <Link to="/">
-          <strong>arcbit-fe</strong>
+        <Link to="/" className={styles.brand}>
+          <span className={styles.mark} aria-hidden="true" />
+          <strong>Arcbit</strong>
         </Link>
       }
       nav={
         <>
-          <Link to="/">홈</Link>
-          <Link to="/account">계정</Link>
+          {allCategories().map((c) => (
+            <NavLink key={c.id} to={`/${c.id}`}>
+              {c.title}
+            </NavLink>
+          ))}
+          <NavLink to="/account">계정</NavLink>
         </>
       }
       actions={

@@ -1,0 +1,32 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-strong);
+  text-decoration: none;
+  font-family: var(--display);
+}
+
+/* 홀로그램 바탕 위 번개 모양 로고 마크 */
+.mark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: conic-gradient(
+    from 210deg,
+    var(--holo-1),
+    var(--holo-2),
+    var(--holo-3),
+    var(--holo-1)
+  );
+}
+
+.mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--text-strong);
+  clip-path: polygon(55% 0, 15% 58%, 45% 58%, 35% 100%, 85% 40%, 55% 40%);
+}

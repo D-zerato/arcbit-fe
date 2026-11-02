@@ -1,0 +1,48 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: var(--space-xs);
+  height: 100%;
+  padding: var(--space-xl);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.title {
+  font-family: var(--display);
+  font-size: var(--font-size-heading);
+  font-weight: 650;
+  line-height: var(--line-height-snug);
+  color: var(--text-strong);
+}
+
+.summary {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.meta {
+  margin-top: var(--space-sm);
+  font-family: var(--mono);
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}

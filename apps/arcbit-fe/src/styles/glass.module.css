@@ -1,0 +1,97 @@
+/*
+ * 홀로 글라스 — 반투명 유리 면과 무지개빛 테두리. @arcbit/ui 의 Card 처럼 className 을 받는 부품에 붙인다.
+ * 색은 tokens.json 의 holo 절(--glass · --holo-1·2·3)만 쓴다.
+ */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+}
+
+.holoEdge {
+  position: relative;
+  border-color: transparent;
+}
+
+.holoEdge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--holo-1), var(--holo-2), var(--holo-3)) border-box;
+  /* 테두리 굵기(1px)만 남기고 안쪽을 도려낸다 */
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0) border-box;
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) padding-box exclude,
+    linear-gradient(#000 0 0) border-box;
+}
+
+/* 눌리는 카드 — hover 때 테두리가 선명해지고 사선 반사광이 한 번 지나간다(커서 추적 없음) */
+.interactive {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.interactive.holoEdge::before {
+  opacity: 0.55;
+  transition: opacity 200ms ease;
+}
+
+.interactive:hover,
+.interactive:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.interactive:hover::before,
+.interactive:focus-visible::before {
+  opacity: 1;
+}
+
+.interactive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+      115deg,
+      transparent 35%,
+      color-mix(in srgb, var(--holo-2) 28%, transparent) 48%,
+      color-mix(in srgb, var(--holo-3) 22%, transparent) 54%,
+      transparent 66%
+    )
+    140% 0 / 260% 100% no-repeat;
+}
+
+.interactive:hover::after {
+  animation: sheen 700ms ease-out 1 forwards;
+}
+
+@keyframes sheen {
+  from {
+    opacity: 1;
+    background-position: 140% 0;
+  }
+  to {
+    opacity: 1;
+    background-position: -40% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive,
+  .interactive::before {
+    transition: none;
+  }
+  .interactive:hover::after {
+    animation: none;
+  }
+}

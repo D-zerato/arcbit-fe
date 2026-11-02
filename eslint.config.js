@@ -1,3 +1,4 @@
+import path from 'node:path'
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -46,6 +47,48 @@ const APP_NAMES = {
  * 예외 앱은 아래 UI_ONLY_EXEMPT 한 줄 — 이 레포에서는 워크벤치(날 요소 13곳 · 인라인 style 1곳이 토큰 · 부품 이전부터 쌓인 시각적 테스트 벤치의 모양이다).
  */
 const UI_ONLY_EXEMPT = ['apps/workbench/**']
+
+/*
+ * Arcbit 도구 경계 — `apps/arcbit-fe/src/tools/<카테고리>/<세부>/<도구>/` 안의 파일은 상대 경로로
+ * 자기 도구 폴더(하위 폴더 포함)와 앱의 공용 조각(catalog/types · styles/ · share/)만 부른다.
+ * 다른 도구나 화면(routes · layouts)을 부르면 도구 하나를 옮기거나 지울 때 다른 도구가 깨진다.
+ * 경로를 실제로 풀어서 판단하므로 깊이 · `..` 우회와 무관하고, 동적 import('…') 도 같이 본다.
+ */
+const APP_SRC = path.join(import.meta.dirname, 'apps/arcbit-fe/src')
+const TOOLS_ROOT = path.join(APP_SRC, 'tools')
+const TOOL_SHARED = [
+  path.join(APP_SRC, 'catalog/types'),
+  path.join(APP_SRC, 'styles'),
+  path.join(APP_SRC, 'share'),
+]
+const inside = (target, dir) => target === dir || target.startsWith(dir + path.sep)
+const toolBoundary = {
+  meta: {
+    type: 'problem',
+    messages: {
+      outside:
+        "'{{spec}}' leaves this tool: a tool only imports from its own folder, @arcbit/* packages, and the shared app parts (catalog/types, styles/, share/). Never another tool or a page.",
+    },
+  },
+  create(context) {
+    const parts = path.relative(TOOLS_ROOT, context.filename).split(path.sep)
+    if (parts.length < 4 || parts[0] === '..') return {}
+    const toolRoot = path.join(TOOLS_ROOT, ...parts.slice(0, 3))
+    const check = (node, spec) => {
+      if (typeof spec !== 'string' || !spec.startsWith('.')) return
+      const target = path.resolve(path.dirname(context.filename), spec).replace(/\.(tsx?|css)$/, '')
+      if (inside(target, toolRoot) || TOOL_SHARED.some((dir) => inside(target, dir))) return
+      context.report({ node, messageId: 'outside', data: { spec } })
+    }
+    return {
+      ImportDeclaration: (node) => check(node.source, node.source.value),
+      ExportNamedDeclaration: (node) => node.source && check(node.source, node.source.value),
+      ExportAllDeclaration: (node) => check(node.source, node.source.value),
+      ImportExpression: (node) =>
+        node.source.type === 'Literal' && check(node.source, node.source.value),
+    }
+  },
+}
 const STORY_HINT = ' — see its story for the canonical usage (docs/ui-catalog.md)'
 const RAW_ELEMENT = (name, use) => ({
   selector: `JSXOpeningElement[name.name='${name}']`,
@@ -92,6 +135,11 @@ export default defineConfig([
     files: ['apps/**/*.{ts,tsx}'],
     ignores: UI_ONLY_EXEMPT,
     rules: { 'no-restricted-syntax': ['error', ...UI_ONLY] },
+  },
+  {
+    files: ['apps/arcbit-fe/src/tools/**/*.{ts,tsx}'],
+    plugins: { arcbit: { rules: { 'tool-boundary': toolBoundary } } },
+    rules: { 'arcbit/tool-boundary': 'error' },
   },
   {
     files: ['packages/**/*.{ts,tsx}'],

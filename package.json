@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter arcbit-fe dev",
+    "new:tool": "node scripts/new-tool.mjs",
     "storybook": "pnpm --filter storybook-app storybook",
     "storybook:build": "pnpm --filter storybook-app build-storybook",
     "build": "pnpm -r build",
