@@ -71,11 +71,23 @@ pnpm storybook                    # 부품 사용법 http://localhost:6006
 
 ## 배포 (Cloudflare Pages)
 
+Pages 프로젝트 `arcbit-fe` · 운영 주소 https://arcbit-fe.pages.dev
+
+| 브랜치              | 배포                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `prod`              | **운영** — push 하면 운영 주소로 배포된다. 사용자가 명시적으로 요청할 때만 반영한다  |
+| `main`              | 개발 기본 브랜치 — push 하면 미리보기 `https://main.arcbit-fe.pages.dev` 로 배포된다 |
+| 그 밖의 브랜치 · PR | 미리보기 주소가 따로 생긴다                                                          |
+
+운영 반영은 `main` 을 `prod` 로 그대로 올린다(`git push origin main:prod`). `prod` 에 직접 커밋하지 않는다.
+
 | 칸                     | 값                                                                |
 | ---------------------- | ----------------------------------------------------------------- |
+| Production branch      | `prod`                                                            |
 | Root directory         | 레포 루트                                                         |
 | Build command          | `pnpm install --frozen-lockfile && pnpm --filter arcbit-fe build` |
 | Build output directory | `apps/arcbit-fe/dist`                                             |
+| Environment variables  | `NODE_VERSION=24` · `PNPM_VERSION=10`                             |
 
 SPA 주소 처리: 빌드 결과에 최상위 `404.html` 이 없으면 Pages 가 모든 주소를 `index.html` 로 연다(기본 동작). `404.html` 이나 `_redirects` 를 더하지 않는다. 첫 배포 뒤 `/game/animo/gender-type` 을 새로고침해 열리는지 확인한다.
 
