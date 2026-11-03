@@ -54,9 +54,9 @@ describe('RootLayout', () => {
     expect(html).not.toMatch(/<aside[^>]*data-open/)
   })
 
-  it('사이드바는 지금 화면의 바로 아래 메뉴와 위로 가는 링크를 그린다', () => {
+  it('사이드바는 지금 화면의 바로 아래 메뉴만 그린다', () => {
     const html = render('/game/animo/gender-type')
-    expect(html).toContain('href="/game"')
+    expect(html).not.toMatch(/<aside[\s\S]*href="\/game"[\s\S]*<\/aside>/)
     expect(html).toMatch(
       /aria-current="page"[^>]*href="\/game\/animo\/gender-type"|href="\/game\/animo\/gender-type"[^>]*aria-current="page"/,
     )

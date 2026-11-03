@@ -25,9 +25,9 @@ describe('사이드바 메뉴 — 지금 화면의 바로 아래 단계만', () 
     expect(menu.items.every((i) => i.to.split('/').length === 3)).toBe(true)
   })
 
-  it('세부 카테고리는 그 안의 도구만 — 카테고리 · 세부는 없다', () => {
+  it('세부 카테고리는 그 안의 도구만 — 카테고리 · 세부 · 위로 가는 링크는 없다', () => {
     const menu = sidebarMenu('/game/animo')
-    expect(menu.back).toEqual({ to: '/game', label: '게임' })
+    expect(menu.back).toBeUndefined()
     expect(menu.heading).toBe('애니모')
     expect(menu.items).toContainEqual({ to: '/game/animo/gender-type', label: '내 성별 추천 타입' })
     expect(menu.items.every((i) => i.to.startsWith('/game/animo/'))).toBe(true)
