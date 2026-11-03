@@ -25,7 +25,7 @@ export default function GenderTypeTool() {
 
   return (
     <div className={styles.layout}>
-      <Card className={glass.glass} title="고르기">
+      <Card title="고르기">
         <div className={styles.inputs}>
           <div className={styles.group}>
             <span id="gt-gender" className={styles.label}>
@@ -55,7 +55,7 @@ export default function GenderTypeTool() {
       <div aria-live="polite">
         {result ? (
           <Card
-            className={`${glass.glass} ${glass.holoEdge}`}
+            className={glass.holoEdge}
             title="추천 결과"
             actions={<Badge tone="warning">예시 데이터</Badge>}
           >

@@ -218,18 +218,18 @@ pnpm tokens:check   # 쓰지 않고 비교 — 생성물이 어긋났으면 종�
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--button-radius` | `12px` | = | `--radius-md` | 모서리 — 알약 버튼이면 {semantic.radius.radius-full} 이나 9999px |
+| `--button-radius` | `9999px` | = | `--radius-full` | 모서리 — Arcbit 은 알약 버튼 |
 | `--button-primary-bg` | `#10121a` | `#e2e5ec` | `--inverse` | 주 버튼 채움(Pagination 현재 쪽 포함) |
 | `--button-primary-fg` | `#ffffff` | `#10121a` | `--on-inverse` | 주 버튼 글자 — primary-bg 를 바꾸면 대비가 맞는 글자색으로 함께 바꾼다 |
 | `--button-primary-border` | `#10121a` | `#e2e5ec` | `--inverse` | 주 버튼 테두리 |
 | `--button-primary-hover-bg` | `#3b4fc4` | `#8b97d6` | `--teal` | 주 버튼 hover 채움 |
-| `--button-secondary-bg` | `#ffffff` | `#13151b` | `--surface` | 보조 버튼 · 버튼 모양 부품의 바탕 |
+| `--button-secondary-bg` | `rgba(255, 255, 255, 0.68)` | `rgba(19, 21, 27, 0.66)` | `--glass` | 보조 버튼 · 버튼 모양 부품의 바탕 — 유리 면 |
 | `--button-secondary-border` | `#8a92a2` | `#5c6475` | `--border-strong` | 보조 · 덜 중요한 버튼 · 버튼 모양 부품의 테두리 |
 | `--button-hover-wash` | `rgba(59, 79, 196, 0.08)` | `rgba(139, 151, 214, 0.1)` | `--teal-wash` | 보조 · 덜 중요한 버튼 hover 바탕 |
 | `--button-hover-border` | `#3b4fc4` | `#8b97d6` | `--teal` | 보조 · 버튼 모양 부품 hover 테두리 |
 | `--button-quiet-hover-bg` | `#eceef3` | `#1b1e26` | `--surface-muted` | 작은 버튼 모양 부품(CopyButton · RowMenu 단추) hover · 열림 바탕 |
 | `--button-quiet-border` | `#dfe2e9` | `#272b35` | `--border` | Pagination 단추 테두리 |
-| `--button-backdrop` | `none` | = | `none` | 보조 바탕 뒤 흐림(backdrop-filter) — 유리 면이면 blur(12px) 처럼 날값을 그대로 쓴다 |
+| `--button-backdrop` | `blur(12px) saturate(1.4)` | = | `blur(12px) saturate(1.4)` | 보조 바탕 뒤 흐림(backdrop-filter) — 유리 면 |
 
 Button 과 버튼 모양 부품(CopyButton · Pagination · RowMenu 단추 · Dialog 닫기 · ErrorReference 복사 · SectionCard 접기) — 모두 보조 바탕 · 흐림 · hover 테두리를 같이 쓴다.
 
@@ -238,7 +238,7 @@ Button 과 버튼 모양 부품(CopyButton · Pagination · RowMenu 단추 · Di
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
 | `--field-radius` | `12px` | = | `--radius-md` | 모서리 |
-| `--field-bg` | `#ffffff` | `#13151b` | `--surface` | 바탕 |
+| `--field-bg` | `#eceef3` | `#1b1e26` | `--surface-muted` | 바탕 |
 | `--field-border` | `#dfe2e9` | `#272b35` | `--border` | 테두리 |
 | `--field-focus-border` | `#3b4fc4` | `#8b97d6` | `--teal` | 포커스 테두리 |
 | `--field-focus-ring` | `#eaecf8` | `#1e2236` | `--teal-soft` | 포커스 바깥 링(outline) 색 |
@@ -250,11 +250,11 @@ Button 과 버튼 모양 부품(CopyButton · Pagination · RowMenu 단추 · Di
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--card-radius` | `12px` | = | `--radius-md` | 모서리 |
-| `--card-bg` | `#ffffff` | `#13151b` | `--surface` | 바탕 — 유리 면이면 반투명 의미 토큰 |
+| `--card-radius` | `20px` | = | `--radius-lg` | 모서리 |
+| `--card-bg` | `rgba(255, 255, 255, 0.68)` | `rgba(19, 21, 27, 0.66)` | `--glass` | 바탕 — 반투명 유리 면(holo 절) |
 | `--card-border` | `#dfe2e9` | `#272b35` | `--border` | 테두리 |
 | `--card-shadow` | `0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08)` | `0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35)` | `--shadow` | 그림자 |
-| `--card-backdrop` | `none` | = | `none` | 바탕 뒤 흐림(backdrop-filter) — 유리 면이면 blur(16px) saturate(1.5) 처럼 날값을 그대로 쓰고 bg 를 반투명 의미 토큰으로 |
+| `--card-backdrop` | `blur(16px) saturate(1.5)` | = | `blur(16px) saturate(1.5)` | 바탕 뒤 흐림(backdrop-filter) — 유리 면 |
 
 면 부품 — Card · SectionCard · Stat · Table 틀(Table 은 그림자 없음).
 
@@ -262,11 +262,11 @@ Button 과 버튼 모양 부품(CopyButton · Pagination · RowMenu 단추 · Di
 
 | token | light | dark | reference | purpose |
 |---|---|---|---|---|
-| `--overlay-radius` | `12px` | = | `--radius-md` | 모서리 |
-| `--overlay-bg` | `#ffffff` | `#13151b` | `--surface` | 바탕 |
+| `--overlay-radius` | `20px` | = | `--radius-lg` | 모서리 |
+| `--overlay-bg` | `rgba(255, 255, 255, 0.88)` | `rgba(19, 21, 27, 0.88)` | `--glass-strong` | 바탕 — 반투명 유리 면(holo 절) |
 | `--overlay-border` | `#8a92a2` | `#5c6475` | `--border-strong` | 테두리 |
 | `--overlay-shadow` | `0 1px 2px rgba(16, 18, 26, 0.05), 0 8px 24px rgba(16, 18, 26, 0.08)` | `0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35)` | `--shadow` | 그림자 |
-| `--overlay-backdrop` | `none` | = | `none` | 바탕 뒤 흐림(backdrop-filter) — 유리 면이면 blur(16px) saturate(1.5) 처럼 날값을 그대로 쓰고 bg 를 반투명 의미 토큰으로 |
+| `--overlay-backdrop` | `blur(24px) saturate(1.5)` | = | `blur(24px) saturate(1.5)` | 바탕 뒤 흐림(backdrop-filter) — 유리 면 |
 | `--overlay-item-radius` | `8px` | = | `--radius-sm` | 목록 항목 모서리(Combobox 선택지 · RowMenu 항목) |
 | `--overlay-scrim` | `color-mix(in srgb, #10121a 55%, transparent)` | `color-mix(in srgb, #e2e5ec 55%, transparent)` | `color-mix(in srgb, var(--inverse) 55%, transparent)` | Dialog 뒤 덮개 |
 
@@ -278,8 +278,8 @@ Button 과 버튼 모양 부품(CopyButton · Pagination · RowMenu 단추 · Di
 |---|---|---|---|---|
 | `--shell-bg` | `rgba(255, 255, 255, 0.72)` | `rgba(19, 21, 27, 0.7)` | `--header-bg` | 바탕 |
 | `--shell-border` | `#dfe2e9` | `#272b35` | `--border` | 아래 테두리 |
-| `--shell-backdrop` | `none` | = | `none` | 바탕 뒤 흐림(backdrop-filter) — 유리 면이면 blur(16px) saturate(1.5) 처럼 날값을 그대로 쓰고 bg 를 반투명 의미 토큰으로 |
-| `--shell-nav-radius` | `12px` | = | `--radius-md` | 내비 링크 · 포커스 링 모서리 |
+| `--shell-backdrop` | `blur(14px) saturate(1.4)` | = | `blur(14px) saturate(1.4)` | 머리줄 바탕 뒤 흐림(backdrop-filter) |
+| `--shell-nav-radius` | `9999px` | = | `--radius-full` | 내비 링크 · 포커스 링 모서리 |
 | `--shell-nav-active-bg` | `rgba(59, 79, 196, 0.08)` | `rgba(139, 151, 214, 0.1)` | `--teal-wash` | 현재 페이지 링크 바탕 |
 
 AppShell 머리줄.
@@ -290,7 +290,7 @@ AppShell 머리줄.
 |---|---|---|---|---|
 | `--progress-radius` | `9999px` | = | `--radius-full` | 모서리 |
 | `--progress-track` | `#dfe2e9` | `#272b35` | `--border` | 바탕 줄 |
-| `--progress-fill` | `#3b4fc4` | `#8b97d6` | `--teal` | 정해진 진행의 채움 — 색 또는 그라디언트(linear-gradient(…, {semantic.…})). 그라디언트는 채운 폭 안에서만 그려진다 |
+| `--progress-fill` | `linear-gradient(90deg, #a9b8ff, #a6ecd9, #f0c2f4)` | `linear-gradient(90deg, #7f92ff, #6fd8bf, #d79be0)` | `linear-gradient(90deg, var(--holo-1), var(--holo-2), var(--holo-3))` | 정해진 진행의 채움 — 홀로 3색 그라디언트(채운 폭 안에서 그려진다) |
 | `--progress-indeterminate` | `#3b4fc4` | `#8b97d6` | `--teal` | 끝을 모르는 진행의 움직이는 띠 · 브라우저 기본 막대(accent-color) — 색만 |
 | `--progress-indeterminate-still` | `rgba(59, 79, 196, 0.08)` | `rgba(139, 151, 214, 0.1)` | `--teal-wash` | 움직임 줄이기 설정에서 끝을 모르는 진행의 바탕 — 색만 |
 

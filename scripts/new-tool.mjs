@@ -67,12 +67,11 @@ describe('run', () => {
 })
 `,
   'Tool.tsx': `import { Card } from '@arcbit/ui'
-import glass from '../../../../styles/glass.module.css'
 import styles from './Tool.module.css'
 
 export default function ToolScreen() {
   return (
-    <Card className={glass.glass} title={${quoted}}>
+    <Card title={${quoted}}>
       <p className={styles.hint}>여기에 도구 화면을 만든다.</p>
     </Card>
   )

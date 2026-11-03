@@ -256,54 +256,54 @@
 :root,
 [data-theme] {
   /* Component · Button */
-  --button-radius: var(--radius-md);
+  --button-radius: var(--radius-full);
   --button-primary-bg: var(--inverse);
   --button-primary-fg: var(--on-inverse);
   --button-primary-border: var(--inverse);
   --button-primary-hover-bg: var(--teal);
-  --button-secondary-bg: var(--surface);
+  --button-secondary-bg: var(--glass);
   --button-secondary-border: var(--border-strong);
   --button-hover-wash: var(--teal-wash);
   --button-hover-border: var(--teal);
   --button-quiet-hover-bg: var(--surface-muted);
   --button-quiet-border: var(--border);
-  --button-backdrop: none;
+  --button-backdrop: blur(12px) saturate(1.4);
 
   /* Component · Field */
   --field-radius: var(--radius-md);
-  --field-bg: var(--surface);
+  --field-bg: var(--surface-muted);
   --field-border: var(--border);
   --field-focus-border: var(--teal);
   --field-focus-ring: var(--teal-soft);
   --field-disabled-bg: var(--surface-muted);
 
   /* Component · Card */
-  --card-radius: var(--radius-md);
-  --card-bg: var(--surface);
+  --card-radius: var(--radius-lg);
+  --card-bg: var(--glass);
   --card-border: var(--border);
   --card-shadow: var(--shadow);
-  --card-backdrop: none;
+  --card-backdrop: blur(16px) saturate(1.5);
 
   /* Component · Overlay */
-  --overlay-radius: var(--radius-md);
-  --overlay-bg: var(--surface);
+  --overlay-radius: var(--radius-lg);
+  --overlay-bg: var(--glass-strong);
   --overlay-border: var(--border-strong);
   --overlay-shadow: var(--shadow);
-  --overlay-backdrop: none;
+  --overlay-backdrop: blur(24px) saturate(1.5);
   --overlay-item-radius: var(--radius-sm);
   --overlay-scrim: color-mix(in srgb, var(--inverse) 55%, transparent);
 
   /* Component · Shell */
   --shell-bg: var(--header-bg);
   --shell-border: var(--border);
-  --shell-backdrop: none;
-  --shell-nav-radius: var(--radius-md);
+  --shell-backdrop: blur(14px) saturate(1.4);
+  --shell-nav-radius: var(--radius-full);
   --shell-nav-active-bg: var(--teal-wash);
 
   /* Component · Progress */
   --progress-radius: var(--radius-full);
   --progress-track: var(--border);
-  --progress-fill: var(--teal);
+  --progress-fill: linear-gradient(90deg, var(--holo-1), var(--holo-2), var(--holo-3));
   --progress-indeterminate: var(--teal);
   --progress-indeterminate-still: var(--teal-wash);
 
