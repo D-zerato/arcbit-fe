@@ -1,0 +1,166 @@
+/* 위: 로고 · 가운데: 메뉴(넘치면 이 칸만 스크롤) · 아래: 테마와 로그인 */
+.sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-md);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  color: var(--text-strong);
+  text-decoration: none;
+  font-family: var(--display);
+}
+
+/* 홀로그램 바탕 위 번개 모양 로고 마크 */
+.mark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: conic-gradient(
+    from 210deg,
+    var(--holo-1),
+    var(--holo-2),
+    var(--holo-3),
+    var(--holo-1)
+  );
+}
+
+.mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--text-strong);
+  clip-path: polygon(55% 0, 15% 58%, 45% 58%, 35% 100%, 85% 40%, 55% 40%);
+}
+
+.nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--shell-nav-radius);
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+  text-decoration: none;
+}
+
+.back:hover {
+  background: var(--surface-alt);
+  color: var(--text-strong);
+}
+
+.heading {
+  margin: var(--space-sm) 0 var(--space-xs);
+  padding: 0 var(--space-sm);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: var(--font-size-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border-radius: var(--shell-nav-radius);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--surface-alt);
+  color: var(--text-strong);
+}
+
+.link:active {
+  background: var(--surface-muted);
+}
+
+/* 지금 위치: 색만이 아니라 굵게 + 왼쪽 막대 */
+.link[aria-current='page'] {
+  background: var(--shell-nav-active-bg);
+  color: var(--text-strong);
+  font-weight: 750;
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+
+.brand:focus-visible,
+.back:focus-visible,
+.link:focus-visible,
+.accountName:focus-visible {
+  outline: 3px solid var(--teal-soft);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px var(--teal);
+}
+
+.empty {
+  margin: 0;
+  padding: 0 var(--space-md);
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--shell-border);
+}
+
+.login {
+  flex: 1;
+}
+
+.account {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.accountName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 var(--space-sm);
+  border-radius: var(--shell-nav-radius);
+  color: var(--text-strong);
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

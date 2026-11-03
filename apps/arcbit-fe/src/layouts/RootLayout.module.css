@@ -1,32 +1,97 @@
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--text-strong);
-  text-decoration: none;
-  font-family: var(--display);
+/* 넓은 화면: 사이드바 | 본문 두 칸. 좁은 화면: 위쪽 줄 + 본문, 사이드바는 서랍 */
+.shell {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
 }
 
-/* 홀로그램 바탕 위 번개 모양 로고 마크 */
-.mark {
-  position: relative;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: var(--radius-sm);
-  background: conic-gradient(
-    from 210deg,
-    var(--holo-1),
-    var(--holo-2),
-    var(--holo-3),
-    var(--holo-1)
-  );
+.topbar {
+  display: none;
 }
 
-.mark::after {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  background: var(--text-strong);
-  clip-path: polygon(55% 0, 15% 58%, 45% 58%, 35% 100%, 85% 40%, 55% 40%);
+.aside {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  border-right: 1px solid var(--shell-border);
+  background: var(--shell-bg);
+  backdrop-filter: var(--shell-backdrop);
+  -webkit-backdrop-filter: var(--shell-backdrop);
+}
+
+.backdrop {
+  display: none;
+}
+
+.main {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: var(--space-2xl);
+}
+
+@media (max-width: 768px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 56px;
+    padding: 0 var(--space-md);
+    border-bottom: 1px solid var(--shell-border);
+    background: var(--shell-bg);
+    backdrop-filter: var(--shell-backdrop);
+    -webkit-backdrop-filter: var(--shell-backdrop);
+  }
+
+  .aside {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: min(300px, 85vw);
+    /* 본문 위를 덮는 서랍 — 아래 글자가 비치지 않게 불투명 면 */
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: var(--overlay-shadow);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 200ms ease,
+      visibility 200ms;
+  }
+
+  /* 열 때는 바로 보이게(그래야 첫 링크로 포커스를 옮길 수 있다), 닫을 때만 미끄러진 뒤 숨긴다 */
+  .aside[data-open] {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform 200ms ease,
+      visibility 0s;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: block;
+    background: var(--overlay-scrim);
+  }
+
+  .main {
+    padding: var(--space-lg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aside,
+  .aside[data-open] {
+    transition: none;
+  }
 }

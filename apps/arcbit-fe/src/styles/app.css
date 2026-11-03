@@ -1,5 +1,5 @@
 /*
- * 앱 전역 CSS (앱에 하나뿐) — 바탕 오로라 빛만 둔다. 부품 모양은 CSS Modules 로.
+ * 앱 전역 CSS (앱에 하나뿐) — 바탕 오로라 빛과 고정 위쪽 줄 여백만 둔다. 부품 모양은 CSS Modules 로.
  */
 body {
   background:
@@ -26,4 +26,11 @@ h1,
 h2,
 h3 {
   font-family: var(--display);
+}
+
+/* 좁은 화면의 고정 위쪽 줄(layouts/RootLayout.module.css .topbar, 56px) 밑에 앵커 · scrollIntoView 대상이 가리지 않게 */
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 56px;
+  }
 }

@@ -29,17 +29,36 @@ const api: AuthApi = {
   cancelDeletion: unused,
 }
 
+function render(path: string) {
+  vi.stubGlobal('document', { documentElement: { dataset: {} } })
+  return renderToStaticMarkup(
+    <AuthProvider session={createAuthSession({ api, store: createTokenStore() })}>
+      <MemoryRouter initialEntries={[path]}>
+        <RootLayout />
+      </MemoryRouter>
+    </AuthProvider>,
+  )
+}
+
 describe('RootLayout', () => {
-  it('wraps the page in the AppShell with the theme toggle in the header', () => {
-    vi.stubGlobal('document', { documentElement: { dataset: {} } })
-    const html = renderToStaticMarkup(
-      <AuthProvider session={createAuthSession({ api, store: createTokenStore() })}>
-        <MemoryRouter>
-          <RootLayout />
-        </MemoryRouter>
-      </AuthProvider>,
-    )
-    expect(html).toMatch(/<header[\s\S]*aria-label="Theme: system"[\s\S]*<\/header>/)
+  it('사이드바 하단에 테마와 로그인, 옆에 본문', () => {
+    const html = render('/')
+    expect(html).toMatch(/<aside[\s\S]*aria-label="Theme: system"[\s\S]*로그인[\s\S]*<\/aside>/)
     expect(html).toContain('<main')
+  })
+
+  it('좁은 화면용 메뉴 버튼이 사이드바를 가리키고 처음엔 닫혀 있다', () => {
+    const html = render('/')
+    expect(html).toMatch(/aria-expanded="false"[^>]*aria-controls="app-sidebar"/)
+    expect(html).toContain('id="app-sidebar"')
+    expect(html).not.toMatch(/<aside[^>]*data-open/)
+  })
+
+  it('사이드바는 지금 화면의 바로 아래 메뉴와 위로 가는 링크를 그린다', () => {
+    const html = render('/game/animo/gender-type')
+    expect(html).toContain('href="/game"')
+    expect(html).toMatch(
+      /aria-current="page"[^>]*href="\/game\/animo\/gender-type"|href="\/game\/animo\/gender-type"[^>]*aria-current="page"/,
+    )
   })
 })

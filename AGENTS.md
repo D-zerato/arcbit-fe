@@ -19,8 +19,8 @@ apps/arcbit-fe/src/
 ├── catalog/      categories.ts(사이트 지도 정본) · registry.ts(도구 자동 등록) · types.ts · components/
 ├── tools/<카테고리>/<세부>/<도구>/   도구 하나 = 폴더 하나
 ├── routes/       홈 · 카테고리 · 세부 카테고리 · 도구 페이지(공용) + skeleton 의 계정 · 약관 화면
-├── layouts/      화면 틀(AppShell)
-├── styles/       app.css(전역: 바탕 오로라뿐) · glass.module.css(홀로 글라스)
+├── layouts/      화면 틀: 왼쪽 사이드바(지금 화면의 바로 아래 메뉴 · 하단 테마와 로그인) + 본문. 메뉴 고르기는 `catalog/sidebarMenu.ts`
+├── styles/       app.css(전역: 바탕 오로라 · 좁은 화면 고정 위쪽 줄 여백) · glass.module.css(홀로 글라스)
 ├── share/        여러 도구가 함께 쓰는 순수 조각(필요해질 때 만든다 — 도구끼리 직접 부르지 않고 여기로 올린다)
 └── auth/ api/ legal/ hooks/   skeleton 백엔드 연결 (지금은 백엔드 없이 둔다. `hooks/useHello.ts` 는 백엔드 호출 예시이며 쓰지 않는다)
 ```
